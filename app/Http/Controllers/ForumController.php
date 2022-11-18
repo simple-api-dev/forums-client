@@ -15,7 +15,6 @@ class ForumController extends Controller
         $client = HttpClient::create();
 
         $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $slug . '?apikey=' . getenv('API_KEY'));
-        $statusCode = $response->getStatusCode();
         $forum_content = $response->getContent();
         $forum_content = json_decode($forum_content);
 
@@ -51,13 +50,17 @@ class ForumController extends Controller
         $httpClient = HttpClient::create();
 
         $response = $httpClient->request('POST', getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'), [
-            'body' => [
+            'headers' => [
+                'Content-Type' => 'application/json', ],
+            'body' => json_encode([
                 'title' => $request_data['title'],
                 'body' => $request_data['body'],
                 'status' => $request_data['status'],
                 'author_id' => $request_data['author_id'],
-            ]
+            ])
         ]);
+
+
 
         return redirect('/');
     }
@@ -91,14 +94,17 @@ class ForumController extends Controller
         $request_data = $request->all();
         $httpClient = HttpClient::create();
         $response = $httpClient->request('PUT', getenv('API_SITE') . '/forums/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
-            'body' => [
+            'headers' => [
+                'Content-Type' => 'application/json', ],
+            'body' => json_encode([
                 'body' => $request_data['body'],
                 'status' => $request_data['status'],
-            ]
+            ])
         ]);
 
         return redirect('/');
     }
+
 
     /**
      * Call API to remove the specified forum

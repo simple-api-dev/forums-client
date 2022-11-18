@@ -18,8 +18,9 @@
     @foreach($content  as $key => $value)
         <ul>
             <li>
-                <a href="http://127.0.0.1:8000/editForum/{{$value->slug}}?apikey={{getenv('API_KEY')}}"><i class="fa fa-pen"></i></a>
-                <a href="http://127.0.0.1:8000/deleteForum/{{$value->id}}?apikey={{getenv('API_KEY')}}"><i class="fa fa-trash"></i></a>
+
+                <a href="{{getenv('FORUM_CLIENT')}}/editForum/{{$value->slug}}?apikey={{getenv('API_KEY')}}"><i class="fa fa-pen"></i></a>
+                <a href="{{getenv('FORUM_CLIENT')}}/deleteForum/{{$value->id}}?apikey={{getenv('API_KEY')}}"><i class="fa fa-trash"></i></a>
                 <a class="underline" href="http://127.0.0.1:8000/forum/{{$value->slug}}">{{$value->title}}</a><br>
                 {{$value->body}} [{{$value->status}}]
             </li>

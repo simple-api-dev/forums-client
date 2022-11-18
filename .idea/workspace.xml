@@ -133,6 +133,9 @@
       <path value="$PROJECT_DIR$/vendor/meyfa/php-svg" />
     </include_path>
   </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
   <component name="ProjectId" id="2HaYykI0fYdE6EV0xA99MmHr6vU" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -169,7 +172,7 @@
       <option name="presentableId" value="Default" />
       <updated>1668524917718</updated>
       <workItem from="1668524919355" duration="22680000" />
-      <workItem from="1668610118202" duration="29786000" />
+      <workItem from="1668610118202" duration="55599000" />
     </task>
     <servers />
   </component>
