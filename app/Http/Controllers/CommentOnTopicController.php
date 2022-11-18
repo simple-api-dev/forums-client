@@ -5,12 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpClient\HttpClient;
 
-class TopicController extends Controller
+class CommentOnTopicController extends Controller
 {
     /**
      * Display the specified topic details
      */
-    public function show(string $slug)
+    public function show()
     {
     }
 
@@ -39,6 +39,7 @@ class TopicController extends Controller
                 'body' => $request_data['body'],
                 'status' => $request_data['status'],
                 'type' => $request_data['type'],
+                'author_id' => $request_data['author_id'],
                 'tags' => [],
             ])
         ]);
@@ -67,7 +68,7 @@ class TopicController extends Controller
             'Pending Review' => 'Pending Review',
             'Locked' => 'Locked',
         );
-        return view('editTopic', compact('topic_content', 'statuses', 'types'));
+        return view('editComment', compact('statuses', 'types'));
     }
 
     /**
@@ -90,7 +91,6 @@ class TopicController extends Controller
                 'tags' => [],
             ])
         ]);
-
         return redirect('/');
     }
 
@@ -104,42 +104,6 @@ class TopicController extends Controller
         $httpClient->request('DELETE', getenv('API_SITE') . '/topics/' . $id . '?apikey=' . getenv('API_KEY'), []);
         return redirect('/');
     }
-
-
-    /**
-     * Call API to upvote the specified topic
-     */
-    public function upvote(Request $request, $id)
-    {
-        $httpClient = HttpClient::create();
-        $httpClient->request('POST', getenv('API_SITE') . '/votes/up/topic/' . $id . '?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json',],
-            'body' => json_encode([
-                'author_id' => "DAN-3",
-            ])
-        ]);
-
-        return redirect('/');
-    }
-
-    /**
-     * Call API to downvote the specified topic
-     */
-    public function downvote(Request $request, $id)
-    {
-        $httpClient = HttpClient::create();
-        $httpClient->request('POST', getenv('API_SITE') . '/votes/down/topic/' . $id . '?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json',],
-            'body' => json_encode([
-                'author_id' => "JO-22",
-            ])
-        ]);
-
-        return redirect('/');
-    }
-
 
     /**
      */

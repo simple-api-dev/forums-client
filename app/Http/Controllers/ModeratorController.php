@@ -10,7 +10,7 @@ class ModeratorController extends Controller
     /**
      * Display the specified forum details
      */
-    public function show(string $slug)
+    public function show()
     {
     }
 
@@ -31,7 +31,7 @@ class ModeratorController extends Controller
         $httpClient = HttpClient::create();
 
 
-        $response = $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['id'] . '/moderators?apikey=' . getenv('API_KEY'), [
+        $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['id'] . '/moderators?apikey=' . getenv('API_KEY'), [
             'headers' => [
                 'Content-Type' => 'application/json',],
             'body' => json_encode([
@@ -69,12 +69,12 @@ class ModeratorController extends Controller
     {
         $request_data = $request->all();
         $httpClient = HttpClient::create();
-        $response = $httpClient->request('PUT', getenv('API_SITE') . '/moderators/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
+        $httpClient->request('PUT', getenv('API_SITE') . '/moderators/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
             'headers' => [
                 'Content-Type' => 'application/json',],
             'body' => json_encode([
                 'status' => $request_data['status'],
-               ])
+            ])
         ]);
 
         return redirect('/');
@@ -87,7 +87,7 @@ class ModeratorController extends Controller
     public function destroy($id)
     {
         $httpClient = HttpClient::create();
-        $response = $httpClient->request('DELETE', getenv('API_SITE') . '/moderators/' . $id . '?apikey=' . getenv('API_KEY'), []);
+        $httpClient->request('DELETE', getenv('API_SITE') . '/moderators/' . $id . '?apikey=' . getenv('API_KEY'), []);
         return redirect('/');
     }
 

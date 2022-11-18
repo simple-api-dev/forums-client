@@ -6,8 +6,8 @@
 </head>
 
 <body>
-<h3>Create New Forum Rule</h3>
-<form action="{{getenv('FORUM_CLIENT')}}/storeRule" method="POST">
+<h3>Create Comment On Topic</h3>
+<form action="{{getenv('FORUM_CLIENT')}}/storeComment" method="POST">
     @csrf
 
     <input type="hidden" name="id" value="{{$id}}">
@@ -21,7 +21,10 @@
         <label for="status">Status</label>
         <select name="status" id="status">
             <option value="Active">Active</option>
-            <option value="Disabled">Disabled</option>
+            <option value="Draft">Draft</option>
+            <option value="Pending Review">Pending Review</option>
+            <option value="Locked">Locked</option>
+            <option value="Removed">Removed</option>
         </select>
     </div>
 
@@ -34,5 +37,4 @@
     <input type="submit" name="submit" value="Submit">
 </form>
 </body>
-
 </html>

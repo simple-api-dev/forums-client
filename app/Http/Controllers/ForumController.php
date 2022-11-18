@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Symfony\Component\HttpClient\Exception\ClientException;
 use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 class ForumController extends Controller
 {
@@ -30,7 +32,11 @@ class ForumController extends Controller
         $topics_content = $response->getContent();
         $topics_content = json_decode($topics_content);
 
-        return view('forum', compact('forum_content', 'moderators_content', 'rules_content', 'topics_content'));
+        $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $forum_content->id . '/tags?apikey=' . getenv('API_KEY'));
+        $tags_content = $response->getContent();
+        $tags_content = json_decode($tags_content);
+
+        return view('forum', compact('forum_content', 'moderators_content', 'rules_content', 'topics_content','tags_content'));
     }
 
     /**
@@ -49,18 +55,21 @@ class ForumController extends Controller
         $request_data = $request->all();
         $httpClient = HttpClient::create();
 
-        $response = $httpClient->request('POST', getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json', ],
-            'body' => json_encode([
-                'title' => $request_data['title'],
-                'body' => $request_data['body'],
-                'status' => $request_data['status'],
-                'author_id' => $request_data['author_id'],
-            ])
-        ]);
-
-
+        $response = '';
+        try {
+            $response = $httpClient->request('POST', getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'), [
+                'headers' => [
+                    'Content-Type' => 'application/json',],
+                'body' => json_encode([
+                    'title' => $request_data['title'],
+                    'body' => $request_data['body'],
+                    'status' => $request_data['status'],
+                    'author_id' => $request_data['author_id'],
+                ])
+            ]);
+        } catch (ClientException $e) {
+            dd($response->getInfo());
+        }
 
         return redirect('/');
     }
@@ -93,7 +102,7 @@ class ForumController extends Controller
     {
         $request_data = $request->all();
         $httpClient = HttpClient::create();
-        $response = $httpClient->request('PUT', getenv('API_SITE') . '/forums/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
+        $httpClient->request('PUT', getenv('API_SITE') . '/forums/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
             'headers' => [
                 'Content-Type' => 'application/json', ],
             'body' => json_encode([
@@ -112,7 +121,8 @@ class ForumController extends Controller
     public function destroy($id)
     {
         $httpClient = HttpClient::create();
-        $response = $httpClient->request('DELETE', getenv('API_SITE') . '/forums/' . $id . '?apikey=' . getenv('API_KEY'), []);
+        $httpClient->request('DELETE', getenv('API_SITE') . '/forums/' . $id . '?apikey=' . getenv('API_KEY'), []);
+
         return redirect('/');
     }
 
