@@ -3,16 +3,15 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Symfony\Component\HttpClient\Exception\ClientException;
+use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpClient\HttpClient;
-use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 class ForumController extends Controller
 {
     /**
      * Display the specified forum details
      */
-    public function show(string $slug)
+    public function show($id, $slug)
     {
         $client = HttpClient::create();
 
@@ -36,7 +35,7 @@ class ForumController extends Controller
         $tags_content = $response->getContent();
         $tags_content = json_decode($tags_content);
 
-        return view('forum', compact('forum_content', 'moderators_content', 'rules_content', 'topics_content','tags_content'));
+        return view('forum', compact('forum_content', 'moderators_content', 'rules_content', 'topics_content', 'tags_content'));
     }
 
     /**
@@ -52,24 +51,45 @@ class ForumController extends Controller
      */
     public function store(Request $request)
     {
+        $validate = Validator::make($request->all(),[
+            'title' => 'required',
+            'body' => 'required',
+            'status' => 'required',
+            'author_id' => 'required',
+        ]);
+
+        if($validate->fails()){
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
         $request_data = $request->all();
         $httpClient = HttpClient::create();
+        $response = $httpClient->request('POST', getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'), [
+            'headers' => [
+                'Content-Type' => 'application/json',],
+            'body' => json_encode([
+                'title' => $request_data['title'],
+                'body' => $request_data['body'],
+                'status' => $request_data['status'],
+                'author_id' => $request_data['author_id'],
+            ])
+        ]);
 
-        $response = '';
-        try {
-            $response = $httpClient->request('POST', getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'), [
+
+        /**ToDo $validate->getMessageBag()->add('HTTPFAIL','Http call failed with message....!!!');
+        return back()->withErrors($validate->errors())->withInput();*
+
+       /** $response = Http::post(getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'),
+            [
                 'headers' => [
                     'Content-Type' => 'application/json',],
                 'body' => json_encode([
-                    'title' => $request_data['title'],
                     'body' => $request_data['body'],
                     'status' => $request_data['status'],
-                    'author_id' => $request_data['author_id'],
                 ])
             ]);
-        } catch (ClientException $e) {
-            dd($response->getInfo());
-        }
+        $response = $response->body();
+        dd($response); */
 
         return redirect('/');
     }
@@ -77,7 +97,7 @@ class ForumController extends Controller
     /**
      * Show the form for editing the forum.
      */
-    public function edit($slug)
+    public function edit($id, $slug)
     {
         $client = HttpClient::create();
         $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $slug . '?apikey=' . getenv('API_KEY'));
@@ -100,11 +120,16 @@ class ForumController extends Controller
      */
     public function update(Request $request)
     {
+        $request->validate([
+            'body' => 'required',
+            'status' => 'required',
+        ]);
+
         $request_data = $request->all();
         $httpClient = HttpClient::create();
         $httpClient->request('PUT', getenv('API_SITE') . '/forums/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
             'headers' => [
-                'Content-Type' => 'application/json', ],
+                'Content-Type' => 'application/json',],
             'body' => json_encode([
                 'body' => $request_data['body'],
                 'status' => $request_data['status'],

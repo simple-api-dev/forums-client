@@ -9,7 +9,7 @@
 <h3>Edit Topic</h3>
 <form action="{{getenv('FORUM_CLIENT')}}/updateComment" method="POST">
     @csrf
-    <input type="hidden" name="slug" id="slug" value="{{$topic_content->slug}}">
+    <input type="hidden" name="id" id="id" value="{{$topic_content->id}}">
 
     <div>
         <label for="body">Body</label>

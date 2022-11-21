@@ -17,9 +17,9 @@ class ModeratorController extends Controller
     /**
      * Show the form for creating a new moderator.
      */
-    public function create($id)
+    public function create($forum_id, $forum_slug)
     {
-        return view('createModerator', compact('id'));
+        return view('createModerator', compact('forum_id', 'forum_slug'));
     }
 
     /**
@@ -31,7 +31,7 @@ class ModeratorController extends Controller
         $httpClient = HttpClient::create();
 
 
-        $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['id'] . '/moderators?apikey=' . getenv('API_KEY'), [
+        $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/moderators?apikey=' . getenv('API_KEY'), [
             'headers' => [
                 'Content-Type' => 'application/json',],
             'body' => json_encode([
@@ -40,14 +40,13 @@ class ModeratorController extends Controller
             ])
         ]);
 
-
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
     }
 
     /**
      * Show the form for editing the moderator.
      */
-    public function edit($id)
+    public function edit($forum_id, $forum_slug, $id)
     {
         $client = HttpClient::create();
         $response = $client->request('GET', getenv('API_SITE') . '/moderators/' . $id . '?apikey=' . getenv('API_KEY'));
@@ -59,7 +58,7 @@ class ModeratorController extends Controller
             'Disabled' => 'Disabled',
         );
 
-        return view('editModerator', compact('moderator_content', 'statuses'));
+        return view('editModerator', compact('moderator_content', 'statuses','forum_id', 'forum_slug', 'id'));
     }
 
     /**
@@ -77,18 +76,18 @@ class ModeratorController extends Controller
             ])
         ]);
 
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
     }
 
 
     /**
      * Call API to remove the specified moderator
      */
-    public function destroy($id)
+    public function destroy($forum_id, $forum_slug, $id)
     {
         $httpClient = HttpClient::create();
         $httpClient->request('DELETE', getenv('API_SITE') . '/moderators/' . $id . '?apikey=' . getenv('API_KEY'), []);
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 
     /**

@@ -10,7 +10,8 @@
 <form action="{{getenv('FORUM_CLIENT')}}/storeTopic" method="POST">
     @csrf
 
-    <input type="hidden" name="id" value="{{$id}}">
+    <input type="hidden" name="forum_id" id="forum_id" value="{{$forum_id}}">
+    <input type="hidden" name="forum_slug" id="forum_slug" value="{{$forum_slug}}">
 
     <div>
         <label for="title">Title</label>
@@ -19,7 +20,7 @@
 
     <div>
         <label for="body">Body</label>
-        <input type="text" name="body" id="body">
+        <textarea name="body" id="body" rows="3" cols="40" maxlength="512"></textarea>
     </div>
 
     <div>

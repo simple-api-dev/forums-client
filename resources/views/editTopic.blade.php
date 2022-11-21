@@ -1,54 +1,96 @@
 <!DOCTYPE html>
-<!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <title>Forum-Client</title>
-    <link rel="stylesheet" href="resources/css/app.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    @vite('resources/css/app.css')
 </head>
 
 <body>
-<h3>Edit Topic</h3>
-<form action="{{getenv('FORUM_CLIENT')}}/updateTopic" method="POST">
+<div class="text-black text-2xl m-10 font-extrabold">Edit Topic Details</div>
+<div class="overflow-y-scroll bg-stone-500 m-10 rounded-lg">
+    @if ($errors->any())
+        <div class="alert alert-danger m-5">
+            <ol>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ol>
+        </div>
+    @endif
+
+<form class="bg-slate-100 p-5" action="{{getenv('FORUM_CLIENT')}}/updateTopic" method="POST">
     @csrf
-    <input type="hidden" name="slug" id="slug" value="{{$topic_content->slug}}">
+    <input type="hidden" name="forum_id" id="forum_id" value="{{$forum_id}}">
+    <input type="hidden" name="forum_slug" id="forum_slug" value="{{$forum_slug}}">
+    <input type="hidden" name="id" id="id" value="{{$topic_content->id}}">
 
+    <label class="font-extrabold">Title</label>
     <div>
-        <label for="title">Title</label>
-        <input type="text" name="title" id="title" value="{{$topic_content->title}}">
+        <span class="bg-slate-100">{{$topic_content->title}}</span>
     </div>
 
-    <div>
-        <label for="body">Body</label>
+    <div class="p-2">
+        <label class="font-extrabold" for="body">Body</label>
+        <div>
         <input type="text" name="body" id="body" value="{{$topic_content->body}}">
+        </div>
     </div>
 
+    <label class="font-extrabold">Type</label>
     <div>
-        <label for="type">Type</label>
-        <select required name="type" id="type">
-            @foreach($types  as $key => $value)
-                <option
-                    value="{{ $key }}" {{$topic_content->type == $key  ? 'selected' : ''}}>{{ $value}}</option>
-            @endforeach
-        </select>
+        <span class="bg-slate-100">{{$topic_content->type}}</span>
     </div>
 
-    <div>
-        <label for="status">Status</label>
+    <div class="p-2">
+        <label class="font-extrabold" for="status">Status</label>
+        <div>
         <select required name="status" id="status">
             @foreach($statuses  as $key => $value)
                 <option
                     value="{{ $key }}" {{$topic_content->status == $key  ? 'selected' : ''}}>{{ $value}}</option>
             @endforeach
         </select>
+        </div>
     </div>
 
+    <label class="font-extrabold">Author_id</label>
     <div>
-        <label for="author_id">Author_id</label>
-        <input type="text" name="author_id" id="author_id" value="{{$topic_content->author_id}}">
+        <span class="bg-slate-100">{{$topic_content->author_id}}</span>
     </div>
 
-    <input type="reset" name="reset" value="Reset">
-    <input type="submit" name="submit" value="Submit">
+    @if(!empty($topic_content->tag_names))
+        <div class="p-2">
+            <label class="font-extrabold" for="tags">Tags</label>
+            <div>
+            <input type="text" name="tags" id="tags" value="{{$topic_content->tag_names[0]}}">
+            </div>
+        </div>
+    @else
+        <div class="p-2">
+            <label class="font-extrabold" for="tags">Tags</label>
+            <div>
+            <input type="text" name="tags" id="tags">
+            </div>
+        </div>
+    @endif
+
+    <label class="font-extrabold">Reports</label>
+    <div>
+        <span class="bg-slate-100">reports</span>
+    </div>
+
+    <label class="font-extrabold">Score</label>
+    <div>
+        <span class="bg-slate-100">{{$topic_content->score}}</span>
+    </div>
+
+    <div class="p-5 text-right">
+        <a class="bg-blue-800 rounded-lg p-1 text-white hover:bg-blue-600"
+           href="{{getenv('FORUM_CLIENT')}}/forum/{{$forum_id}}/{{$forum_slug}}">Cancel</a>
+        <button class="bg-blue-800 rounded-lg p-1 text-white hover:bg-blue-600" type="submit">Submit</button>
+    </div>
 </form>
 </body>
 </html>

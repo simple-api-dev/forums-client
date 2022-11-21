@@ -10,16 +10,16 @@ class TopicController extends Controller
     /**
      * Display the specified topic details
      */
-    public function show(string $slug)
+    public function show()
     {
     }
 
     /**
      * Show the form for creating a new topic.
      */
-    public function create($id)
+    public function create($forum_id, $forum_slug)
     {
-        return view('createTopic', compact('id'));
+        return view('createTopic', compact('forum_id', 'forum_slug'));
     }
 
     /**
@@ -30,8 +30,7 @@ class TopicController extends Controller
         $request_data = $request->all();
         $httpClient = HttpClient::create();
 
-
-        $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['id'] . '/topics?apikey=' . getenv('API_KEY'), [
+        $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/topics?apikey=' . getenv('API_KEY'), [
             'headers' => [
                 'Content-Type' => 'application/json',],
             'body' => json_encode([
@@ -39,16 +38,17 @@ class TopicController extends Controller
                 'body' => $request_data['body'],
                 'status' => $request_data['status'],
                 'type' => $request_data['type'],
-                'tags' => [],
+                'author_id' => $request_data['author_id'],
+                'tags' => ['one','two','three'],
             ])
         ]);
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
     }
 
     /**
      * Show the form for editing the topic.
      */
-    public function edit($slug)
+    public function edit($forum_id, $forum_slug, $slug)
     {
         $client = HttpClient::create();
         $response = $client->request('GET', getenv('API_SITE') . '/topics/' . $slug . '?apikey=' . getenv('API_KEY'));
@@ -67,7 +67,7 @@ class TopicController extends Controller
             'Pending Review' => 'Pending Review',
             'Locked' => 'Locked',
         );
-        return view('editTopic', compact('topic_content', 'statuses', 'types'));
+        return view('editTopic', compact('topic_content', 'statuses', 'types','forum_id','forum_slug'));
     }
 
     /**
@@ -78,38 +78,35 @@ class TopicController extends Controller
         $request_data = $request->all();
 
         $httpClient = HttpClient::create();
-        $httpClient->request('PUT', getenv('API_SITE') . '/topics/' . $request_data['slug'] . '?apikey=' . getenv('API_KEY'), [
+        $httpClient->request('PUT', getenv('API_SITE') . '/topics/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
             'headers' => [
                 'Content-Type' => 'application/json',],
             'body' => json_encode([
-                'title' => $request_data['title'],
                 'body' => $request_data['body'],
                 'status' => $request_data['status'],
-                'type' => $request_data['type'],
-                'author_id' => $request_data['author_id'],
-                'tags' => [],
+                'tags' => array($request_data['tags']),
             ])
         ]);
 
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id']  . '/' .$request_data['forum_slug'] );
     }
 
 
     /**
      * Call API to remove the specified topic
      */
-    public function destroy($id)
+    public function destroy($forum_id, $forum_slug, $id)
     {
         $httpClient = HttpClient::create();
         $httpClient->request('DELETE', getenv('API_SITE') . '/topics/' . $id . '?apikey=' . getenv('API_KEY'), []);
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 
 
     /**
      * Call API to upvote the specified topic
      */
-    public function upvote(Request $request, $id)
+    public function upvote($forum_id, $forum_slug, $id)
     {
         $httpClient = HttpClient::create();
         $httpClient->request('POST', getenv('API_SITE') . '/votes/up/topic/' . $id . '?apikey=' . getenv('API_KEY'), [
@@ -120,13 +117,13 @@ class TopicController extends Controller
             ])
         ]);
 
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 
     /**
      * Call API to downvote the specified topic
      */
-    public function downvote(Request $request, $id)
+    public function downvote($forum_id, $forum_slug, $id)
     {
         $httpClient = HttpClient::create();
         $httpClient->request('POST', getenv('API_SITE') . '/votes/down/topic/' . $id . '?apikey=' . getenv('API_KEY'), [
@@ -137,7 +134,7 @@ class TopicController extends Controller
             ])
         ]);
 
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 
 

@@ -21,9 +21,9 @@ class RuleController extends Controller
     /**
      * Show the form for creating a new rule.
      */
-    public function create($id)
+    public function create($forum_id, $forum_slug)
     {
-        return view('createRule', compact('id'));
+        return view('createRule', compact('forum_id', 'forum_slug'));
     }
 
     /**
@@ -35,8 +35,7 @@ class RuleController extends Controller
         $httpClient = HttpClient::create();
 
 
-        try {
-            $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['id'] . '/rules?apikey=' . getenv('API_KEY'), [
+            $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/rules?apikey=' . getenv('API_KEY'), [
                 'headers' => [
                     'Content-Type' => 'application/json',],
                 'body' => json_encode([
@@ -45,17 +44,14 @@ class RuleController extends Controller
                     'status' => $request_data['status'],
                 ])
             ]);
-        } catch (TransportExceptionInterface $e) {
-            dd($e);
-        }
 
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
     }
 
     /**
      * Show the form for editing the rule.
      */
-    public function edit($id)
+    public function edit($forum_id, $forum_slug, $id)
     {
         $client = HttpClient::create();
         $response = $client->request('GET', getenv('API_SITE') . '/rules/' . $id . '?apikey=' . getenv('API_KEY'));
@@ -68,7 +64,7 @@ class RuleController extends Controller
         );
 
 
-        return view('editRule', compact('rule_content', 'statuses'));
+        return view('editRule', compact('rule_content', 'statuses', 'id', 'forum_id', 'forum_slug'));
     }
 
     /**
@@ -92,14 +88,14 @@ class RuleController extends Controller
             dd($e);
         }
 
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
     }
 
 
     /**
      * Call API to remove the specified rule
      */
-    public function destroy($id)
+    public function destroy($forum_id, $forum_slug, $id)
     {
         $httpClient = HttpClient::create();
         try {
@@ -107,21 +103,21 @@ class RuleController extends Controller
         } catch (TransportExceptionInterface $e) {
             dd($e);
         }
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 
     /**
      * Call API to remove all forum rule
      */
-    public function destroyAll($id)
+    public function destroyAll($forum_id, $forum_slug)
     {
         $httpClient = HttpClient::create();
         try {
-            $httpClient->request('DELETE', getenv('API_SITE') . '/forums/' . $id . '/rules?apikey=' . getenv('API_KEY'), []);
+            $httpClient->request('DELETE', getenv('API_SITE') . '/forums/' . $forum_id . '/rules?apikey=' . getenv('API_KEY'), []);
         } catch (TransportExceptionInterface $e) {
             dd($e);
         }
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 
     /**

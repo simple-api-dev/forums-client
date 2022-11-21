@@ -11,11 +11,9 @@ class ForumTagsController extends Controller
     /**
      * Show the form for creating a new tag.
      */
-    public function create(Request $request)
+    public function create($forum_id, $forum_slug)
     {
-        $id = $request->id;
-
-        return view('createForumTag', compact('id'));
+        return view('createForumTag', compact('forum_id', 'forum_slug'));
     }
 
     /**
@@ -26,7 +24,8 @@ class ForumTagsController extends Controller
         $request_data = $request->all();
         $httpClient = HttpClient::create();
 
-        $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['id'] . '/tags?apikey=' . getenv('API_KEY'), [
+
+        $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/tags?apikey=' . getenv('API_KEY'), [
             'headers' => [
                 'Content-Type' => 'application/json', ],
             'body' => json_encode([
@@ -35,7 +34,7 @@ class ForumTagsController extends Controller
             ])
         ]);
 
-        return redirect('/');
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
     }
 
     /**

@@ -10,7 +10,8 @@
 <form action="{{getenv('FORUM_CLIENT')}}/storeRule" method="POST">
     @csrf
 
-    <input type="hidden" name="id" value="{{$id}}">
+    <input type="hidden" name="forum_id" value="{{$forum_id}}">
+    <input type="hidden" name="forum_slug" value="{{$forum_slug}}">
 
     <div>
         <label for="body">Body</label>

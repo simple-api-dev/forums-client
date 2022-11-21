@@ -49,10 +49,10 @@ class CommentOnTopicController extends Controller
     /**
      * Show the form for editing the topic.
      */
-    public function edit($slug)
+    public function edit($id)
     {
         $client = HttpClient::create();
-        $response = $client->request('GET', getenv('API_SITE') . '/topics/' . $slug . '?apikey=' . getenv('API_KEY'));
+        $response = $client->request('GET', getenv('API_SITE') . '/topics/' . $id . '?apikey=' . getenv('API_KEY'));
         $topic_content = $response->getContent();
         $topic_content = json_decode($topic_content);
 
