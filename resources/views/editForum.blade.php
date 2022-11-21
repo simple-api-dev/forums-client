@@ -1,13 +1,6 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <title>Forum-Client</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    @vite('resources/css/app.css')
-</head>
+@extends('layout.master')
 
-<body>
+@section('content')
 <div class="text-black text-2xl m-10 font-extrabold">Edit Forum Details</div>
 <div class="overflow-y-scroll bg-stone-500 m-10 rounded-lg">
     @if ($errors->any())
@@ -66,6 +59,10 @@
         </div>
     </form>
 </div>
-</body>
+@endsection
 
-</html>
+
+@section('footer')
+    <footer>© 2022 Client Forum</footer>
+@endsection
+

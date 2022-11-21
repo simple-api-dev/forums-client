@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpClient\HttpClient;
 
 class ModeratorController extends Controller
@@ -27,18 +29,28 @@ class ModeratorController extends Controller
      */
     public function store(Request $request)
     {
-        $request_data = $request->all();
-        $httpClient = HttpClient::create();
-
-
-        $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/moderators?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json',],
-            'body' => json_encode([
-                'status' => $request_data['status'],
-                'author_id' => $request_data['author_id'],
-            ])
+        $validate = Validator::make($request->all(), [
+            'author_id' => 'required',
+            'status' => 'required',
         ]);
+
+        if ($validate->fails()) {
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
+        $request_data = $request->all();
+        $response = Http::timeout(3)->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/moderators?apikey=' . getenv('API_KEY'), [
+            'status' => $request_data['status'],
+            'author_id' => $request_data['author_id'],
+        ]);
+
+        if ($response->status() <> 200) {
+            $results = json_decode($response->getBody(), true);
+            foreach ($results as $key => $value) {
+                $validate->getMessageBag()->add($key, $value);
+            }
+            return back()->withErrors($validate->errors())->withInput();
+        }
 
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
     }
@@ -48,17 +60,18 @@ class ModeratorController extends Controller
      */
     public function edit($forum_id, $forum_slug, $id)
     {
-        $client = HttpClient::create();
-        $response = $client->request('GET', getenv('API_SITE') . '/moderators/' . $id . '?apikey=' . getenv('API_KEY'));
-        $moderator_content = $response->getContent();
-        $moderator_content = json_decode($moderator_content);
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/moderators/' . $id . '?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $moderator_content = json_decode($response);
 
         $statuses = array(
             'Active' => 'Active',
             'Disabled' => 'Disabled',
         );
 
-        return view('editModerator', compact('moderator_content', 'statuses','forum_id', 'forum_slug', 'id'));
+        return view('editModerator', compact('moderator_content', 'statuses', 'forum_id', 'forum_slug', 'id'));
     }
 
     /**
@@ -67,14 +80,13 @@ class ModeratorController extends Controller
     public function update(Request $request)
     {
         $request_data = $request->all();
-        $httpClient = HttpClient::create();
-        $httpClient->request('PUT', getenv('API_SITE') . '/moderators/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json',],
-            'body' => json_encode([
+        $response = Http::timeout(3)->put(getenv('API_SITE') . '/moderators/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
                 'status' => $request_data['status'],
-            ])
         ]);
+
+        if ($response->status() <> 200) {
+            dd($response);
+        }
 
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
     }
@@ -85,8 +97,11 @@ class ModeratorController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $id)
     {
-        $httpClient = HttpClient::create();
-        $httpClient->request('DELETE', getenv('API_SITE') . '/moderators/' . $id . '?apikey=' . getenv('API_KEY'), []);
+        $response = Http::timeout(3)->delete(getenv('API_SITE') . '/moderators/' . $id . '?apikey=' . getenv('API_KEY'), []);
+
+        if ($response->status() <> 200) {
+            dd($response);
+        }
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
@@ -53,10 +54,11 @@ class RuleController extends Controller
      */
     public function edit($forum_id, $forum_slug, $id)
     {
-        $client = HttpClient::create();
-        $response = $client->request('GET', getenv('API_SITE') . '/rules/' . $id . '?apikey=' . getenv('API_KEY'));
-        $rule_content = $response->getContent();
-        $rule_content = json_decode($rule_content);
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/rules/' . $id . '?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $rule_content = json_decode($response);
 
         $statuses = array(
             'Active' => 'Active',

@@ -1,11 +1,6 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <title>Forum-Client</title>
-    <link rel="stylesheet" href="resources/css/app.css">
-</head>
+@extends('layout.master')
 
-<body>
+@section('content')
 <h3>Create Comment On Topic</h3>
 <form action="{{getenv('FORUM_CLIENT')}}/storeComment" method="POST">
     @csrf
@@ -36,5 +31,10 @@
     <input type="reset" name="reset" value="Reset">
     <input type="submit" name="submit" value="Submit">
 </form>
-</body>
-</html>
+@endsection
+
+
+@section('footer')
+    <footer>© 2022 Client Forum</footer>
+@endsection
+

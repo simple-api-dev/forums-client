@@ -1,18 +1,7 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <title>Forum-Client</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0-2/css/fontawesome.min.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0-2/css/all.min.css"/>
-    @vite('resources/css/app.css')
-</head>
+@extends('layout.master')
 
-<body>
-
-
-<div class="flex h-screen">
+@section('content')
+    <div class="flex h-screen">
     <div class="flex-1 flex flex-col overflow-hidden">
         <header class="flex justify-between items-center bg-gray-300 p-4 rounded-lg">
             <div class="flex">
@@ -47,7 +36,7 @@
                             <a href="{{getenv('FORUM_CLIENT')}}/downvoteTopic/{{$forum_content->id}}/{{$forum_content->slug}}/{{$item->id}}?apikey={{getenv('API_KEY')}}"><i
                                     class="fa fa-arrow-down text-red-900"></i></a>
                             <span class="text-2xl">
-                                <a href="{{getenv('FORUM_CLIENT')}}/topicPost/{{$forum_content->id}}/{{$forum_content->slug}}/{{$item->id}}?apikey={{getenv('API_KEY')}}"><B>{{$item->title}}</B></a>
+                                <a href="{{getenv('FORUM_CLIENT')}}/topicPost/{{$forum_content->id}}/{{$forum_content->slug}}/{{$item->id}}/{{$item->slug}}?apikey={{getenv('API_KEY')}}"><B>{{$item->title}}</B></a>
                             </span>
                             <a href="{{getenv('FORUM_CLIENT')}}/editTopic/{{$forum_content->id}}/{{$forum_content->slug}}/{{$item->slug}}?apikey={{getenv('API_KEY')}}"><i
                                     class="fa fa-pen text-gray-300 hover:text-black"></i></a>
@@ -138,7 +127,9 @@
         </div>
     </div>
 </div>
+@endsection
 
 
-</body>
-</html>
+@section('footer')
+    <footer>© 2022 Client Forum</footer>
+@endsection

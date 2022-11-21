@@ -1,13 +1,6 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <title>Forum-Client</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    @vite('resources/css/app.css')
-</head>
+@extends('layout.master')
 
-<body>
+@section('content')
 <h3>Create Forum Tag</h3>
 <form action="{{getenv('FORUM_CLIENT')}}/storeForumTag" method="POST">
     @csrf
@@ -35,8 +28,12 @@
     <input type="reset" name="reset" value="Reset">
     <input type="submit" name="submit" value="Submit">
 </form>
-</body>
-</html>
+@endsection
+
+
+@section('footer')
+    <footer>© 2022 Client Forum</footer>
+@endsection
 
 
 

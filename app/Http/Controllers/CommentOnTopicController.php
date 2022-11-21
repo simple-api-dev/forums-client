@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpClient\HttpClient;
 
 class CommentOnTopicController extends Controller
@@ -27,22 +29,36 @@ class CommentOnTopicController extends Controller
      */
     public function store(Request $request)
     {
+        $validate = Validator::make($request->all(), [
+            'title' => 'title',
+            'body' => 'body',
+            'status' => 'status',
+            'type' => 'type',
+            'author_id' => 'author_id',
+            'tags' => [],
+        ]);
+
+        if ($validate->fails()) {
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
         $request_data = $request->all();
-        $httpClient = HttpClient::create();
 
-
-        $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['id'] . '/topics?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json',],
-            'body' => json_encode([
+        $response = Http::timeout(3)->post(getenv('API_SITE') . '/forums/' . $request_data['id'] . '/topics?apikey=' . getenv('API_KEY'), [
                 'title' => $request_data['title'],
                 'body' => $request_data['body'],
                 'status' => $request_data['status'],
                 'type' => $request_data['type'],
                 'author_id' => $request_data['author_id'],
                 'tags' => [],
-            ])
         ]);
+
+        if (!$response->successful()) {
+            $results = json_decode($response->getBody(), true);
+            $validate->getMessageBag()->add('HTTP-FAIL',$results);
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
         return redirect('/');
     }
 
@@ -51,10 +67,11 @@ class CommentOnTopicController extends Controller
      */
     public function edit($id)
     {
-        $client = HttpClient::create();
-        $response = $client->request('GET', getenv('API_SITE') . '/topics/' . $id . '?apikey=' . getenv('API_KEY'));
-        $topic_content = $response->getContent();
-        $topic_content = json_decode($topic_content);
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/topics/' . $id . '?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $topic_content = json_decode($response);
 
         $types = array(
             'Post' => 'Post',
@@ -76,21 +93,35 @@ class CommentOnTopicController extends Controller
      */
     public function update(Request $request)
     {
-        $request_data = $request->all();
+        $validate = Validator::make($request->all(), [
+            'title' => 'title',
+            'body' => 'body',
+            'status' => 'status',
+            'type' => 'type',
+            'author_id' => 'author_id',
+            'tags' => [],
+        ]);
 
-        $httpClient = HttpClient::create();
-        $httpClient->request('PUT', getenv('API_SITE') . '/topics/' . $request_data['slug'] . '?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json',],
-            'body' => json_encode([
+        if ($validate->fails()) {
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
+        $request_data = $request->all();
+        $response = Http::timeout(3)->put(getenv('API_SITE') . '/topics/' . $request_data['slug'] . '?apikey=' . getenv('API_KEY'), [
                 'title' => $request_data['title'],
                 'body' => $request_data['body'],
                 'status' => $request_data['status'],
                 'type' => $request_data['type'],
                 'author_id' => $request_data['author_id'],
                 'tags' => [],
-            ])
         ]);
+
+        if (!$response->successful()) {
+            $results = json_decode($response->getBody(), true);
+            $validate->getMessageBag()->add('HTTP-FAIL',$results);
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
         return redirect('/');
     }
 
@@ -100,8 +131,7 @@ class CommentOnTopicController extends Controller
      */
     public function destroy($id)
     {
-        $httpClient = HttpClient::create();
-        $httpClient->request('DELETE', getenv('API_SITE') . '/topics/' . $id . '?apikey=' . getenv('API_KEY'), []);
+        $response = Http::timeout(3)->delete(getenv('API_SITE') . '/topics/' . $id . '?apikey=' . getenv('API_KEY'), []);
         return redirect('/');
     }
 

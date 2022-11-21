@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpClient\HttpClient;
 
 class TopicController extends Controller
@@ -50,10 +51,12 @@ class TopicController extends Controller
      */
     public function edit($forum_id, $forum_slug, $slug)
     {
-        $client = HttpClient::create();
-        $response = $client->request('GET', getenv('API_SITE') . '/topics/' . $slug . '?apikey=' . getenv('API_KEY'));
-        $topic_content = $response->getContent();
-        $topic_content = json_decode($topic_content);
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/topics/' . $slug . '?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $topic_content = json_decode($response);
+
 
         $types = array(
             'Post' => 'Post',

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
-use Symfony\Component\HttpClient\HttpClient;
 
 class ForumController extends Controller
 {
@@ -13,27 +13,36 @@ class ForumController extends Controller
      */
     public function show($id, $slug)
     {
-        $client = HttpClient::create();
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $slug . '?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $forum_content = json_decode($response);
 
-        $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $slug . '?apikey=' . getenv('API_KEY'));
-        $forum_content = $response->getContent();
-        $forum_content = json_decode($forum_content);
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $forum_content->id . '/moderators?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $moderators_content = json_decode($response);
 
-        $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $forum_content->id . '/moderators?apikey=' . getenv('API_KEY'));
-        $moderators_content = $response->getContent();
-        $moderators_content = json_decode($moderators_content);
 
-        $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $forum_content->id . '/rules?apikey=' . getenv('API_KEY'));
-        $rules_content = $response->getContent();
-        $rules_content = json_decode($rules_content);
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $forum_content->id . '/rules?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $rules_content = json_decode($response);
 
-        $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $slug . '/topics?apikey=' . getenv('API_KEY'));
-        $topics_content = $response->getContent();
-        $topics_content = json_decode($topics_content);
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $slug . '/topics?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $topics_content = json_decode($response);
 
-        $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $forum_content->id . '/tags?apikey=' . getenv('API_KEY'));
-        $tags_content = $response->getContent();
-        $tags_content = json_decode($tags_content);
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $forum_content->id . '/tags?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $tags_content = json_decode($response);
 
         return view('forum', compact('forum_content', 'moderators_content', 'rules_content', 'topics_content', 'tags_content'));
     }
@@ -51,46 +60,32 @@ class ForumController extends Controller
      */
     public function store(Request $request)
     {
-        $validate = Validator::make($request->all(),[
+        $validate = Validator::make($request->all(), [
             'title' => 'required',
             'body' => 'required',
             'status' => 'required',
             'author_id' => 'required',
         ]);
 
-        if($validate->fails()){
+        if ($validate->fails()) {
             return back()->withErrors($validate->errors())->withInput();
         }
 
         $request_data = $request->all();
-        $httpClient = HttpClient::create();
-        $response = $httpClient->request('POST', getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json',],
-            'body' => json_encode([
-                'title' => $request_data['title'],
-                'body' => $request_data['body'],
-                'status' => $request_data['status'],
-                'author_id' => $request_data['author_id'],
-            ])
+        $response = Http::timeout(3)->post(getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'), [
+            'title' => $request_data['title'],
+            'body' => $request_data['body'],
+            'status' => $request_data['status'],
+            'author_id' => $request_data['author_id'],
         ]);
 
-
-        /**ToDo $validate->getMessageBag()->add('HTTPFAIL','Http call failed with message....!!!');
-        return back()->withErrors($validate->errors())->withInput();*
-
-       /** $response = Http::post(getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'),
-            [
-                'headers' => [
-                    'Content-Type' => 'application/json',],
-                'body' => json_encode([
-                    'body' => $request_data['body'],
-                    'status' => $request_data['status'],
-                ])
-            ]);
-        $response = $response->body();
-        dd($response); */
-
+        if ($response->status() <> 200) {
+            $results = json_decode($response->getBody(), true);
+            foreach ($results as $key => $value) {
+                $validate->getMessageBag()->add($key, $value);
+            }
+            return back()->withErrors($validate->errors())->withInput();
+        }
         return redirect('/');
     }
 
@@ -99,11 +94,11 @@ class ForumController extends Controller
      */
     public function edit($id, $slug)
     {
-        $client = HttpClient::create();
-        $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $slug . '?apikey=' . getenv('API_KEY'));
-        //$statusCode = $response->getStatusCode();
-        $forum_content = $response->getContent();
-        $forum_content = json_decode($forum_content);
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $slug . '?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $forum_content = json_decode($response);
 
         $statuses = array(
             'Active' => 'Active',
@@ -120,22 +115,26 @@ class ForumController extends Controller
      */
     public function update(Request $request)
     {
-        $request->validate([
+        $validate = Validator::make($request->all(), [
             'body' => 'required',
             'status' => 'required',
         ]);
 
+        if ($validate->fails()) {
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
         $request_data = $request->all();
-        $httpClient = HttpClient::create();
-        $httpClient->request('PUT', getenv('API_SITE') . '/forums/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json',],
-            'body' => json_encode([
-                'body' => $request_data['body'],
-                'status' => $request_data['status'],
-            ])
+        $response = Http::timeout(3)->put(getenv('API_SITE') . '/forums/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
+            'body' => $request_data['body'],
+            'status' => $request_data['status'],
         ]);
 
+        if (!$response->successful()) {
+            $results = json_decode($response->getBody(), true);
+            $validate->getMessageBag()->add('HTTP-FAIL', $results);
+            return back()->withErrors($validate->errors())->withInput();
+        }
         return redirect('/');
     }
 
@@ -145,9 +144,10 @@ class ForumController extends Controller
      */
     public function destroy($id)
     {
-        $httpClient = HttpClient::create();
-        $httpClient->request('DELETE', getenv('API_SITE') . '/forums/' . $id . '?apikey=' . getenv('API_KEY'), []);
-
+        $response = Http::timeout(3)->delete(getenv('API_SITE') . '/forums/' . $id . '?apikey=' . getenv('API_KEY'), []);
+        if ($response->status() <> 200) {
+            dd($response);
+        }
         return redirect('/');
     }
 

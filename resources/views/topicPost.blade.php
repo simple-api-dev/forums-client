@@ -1,17 +1,6 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <title>Forum-Client</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0-2/css/fontawesome.min.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0-2/css/all.min.css"/>
-    @vite('resources/css/app.css')
-</head>
+@extends('layout.master')
 
-<body>
-
-
+@section('content')
 <div class="flex h-screen">
     <div class="flex-1 flex flex-col overflow-hidden">
         <header class="flex justify-between items-center bg-gray-300 p-4 rounded-lg">
@@ -21,17 +10,6 @@
                 </button>
             </div>
             <div class="flex">
-                <button class="bg-blue-800 rounded-lg p-3 text-white hover:bg-blue-600">
-                    <a href="{{getenv('FORUM_CLIENT')}}/createTopic/{{$forum_content->id}}/{{$forum_content->slug}}?apikey={{getenv('API_KEY')}}">Create New Topic</a>
-                </button>
-            </div>
-            <div class="flex max-w-[70%]">
-                <span>
-                <span class="text-black font-extrabold">{{$forum_content->title}}</span><br>
-                {{$forum_content->body}}
-                    </span>
-            </div>
-            <div class="flex">
                 Login
             </div>
         </header>
@@ -39,13 +17,70 @@
         <div class="flex max-h-[90%]">
             <main class="flex flex-col w-full bg-white overflow-y-auto overflow-x-auto">
                 <div>
-                    POST
+                    <span class="text-black font-extrabold">{{$topic_content->body}}</span>
+                </div>
+                <div>
+                    <form class="bg-slate-100 p-5" method="POST" action="{{getenv('FORUM_CLIENT')}}/storeTopicPost">
+                        @csrf
+
+                        <input type="hidden" id="forum_id" name="forum_id" value="{{$forum_id}}">
+                        <input type="hidden" id="forum_slug" name="forum_slug" value="{{$forum_slug}}">
+                        <input type="hidden" id="topic_id" name="topic_id" value="{{$topic_id}}">
+                        <input type="hidden" id="topic_slug" name="topic_slug" value="{{$topic_slug}}">
+
+                        <div class="p-2">
+                            <label class="font-extra bold" for="body">Body</label>
+                            <div>
+                                <textarea name="body" id="body" rows="2" cols="40">{{old('body')}}</textarea>
+                            </div>
+                        </div>
+
+                        <div class="p-2">
+                            <label class="font-extrabold" for="author_id">Author Id</label>
+                            <div>
+                                <input type="text" name="author_id" id="author_id" size="38"
+                                       value="{{old('author_id')}}">
+                            </div>
+                        </div>
+
+                        <div class="p-2">
+                            <label class="font-extrabold" for="status">Status</label>
+                            <div>
+                                <select name="status" id="status">
+                                    <option value="Active">Active</option>
+                                    <option value="Draft">Draft</option>
+                                    <option value="Pending Review">Pending Review</option>
+                                    <option value="Locked">Locked</option>
+                                    <option value="Removed">Removed</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="p-5 text-right">
+                            <button class="bg-blue-800 rounded-lg p-1 text-white hover:bg-blue-600" type="submit">
+                                Submit
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div>
+                    @foreach($topic_content->comments  as $key => $value)
+                        <div class="m-5 p-5">
+                            Comment:
+                            <b>{{$value->commentable_type}}</b>
+                            {{$value->body}}
+                            {{$value->status}}
+                            {{$value->author_id}}
+                        </div>
+                    @endforeach
                 </div>
             </main>
         </div>
     </div>
 </div>
+@endsection
 
 
-</body>
-</html>
+@section('footer')
+    <footer>© 2022 Client Forum</footer>
+@endsection

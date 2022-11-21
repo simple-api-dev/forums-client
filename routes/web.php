@@ -63,4 +63,5 @@ Route::get('/deleteCommentOnTopic/{id}', [CommentOnTopicController::class, 'dest
 Route::get('/editCommentOnTopic/{id}', [CommentOnTopicController::class, 'edit'], 'id');
 Route::post('/updateCommentOnTopic', [CommentOnTopicController::class, 'update']);
 
-Route::get('/topicPost/{forum_id}/{forum_slug}/{id}', [TopicPostController::class, 'show'], 'forum_id', 'forum_slug', 'id');
+Route::get('/topicPost/{forum_id}/{forum_slug}/{topic_id}/{topic_slug}', [TopicPostController::class, 'show'], 'forum_id', 'forum_slug', 'topic_id', 'topic_slug');
+Route::post('/storeTopicPost', [TopicPostController::class, 'store']);

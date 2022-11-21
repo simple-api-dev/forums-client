@@ -3,41 +3,57 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpClient\HttpClient;
 
 class TopicPostController extends Controller
 {
     /**
-     * Display the specified forum details
+     * Display the specified topic details
      */
-    public function show($id, $slug)
+    public function show($forum_id, $forum_slug, $topic_id, $topic_slug)
     {
-        $client = HttpClient::create();
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/topics/' . $topic_slug . '?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $topic_content = json_decode($response);
 
-        $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $slug . '?apikey=' . getenv('API_KEY'));
-        $forum_content = $response->getContent();
-        $forum_content = json_decode($forum_content);
 
-        $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $forum_content->id . '/moderators?apikey=' . getenv('API_KEY'));
-        $moderators_content = $response->getContent();
-        $moderators_content = json_decode($moderators_content);
-
-        $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $forum_content->id . '/rules?apikey=' . getenv('API_KEY'));
-        $rules_content = $response->getContent();
-        $rules_content = json_decode($rules_content);
-
-        $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $slug . '/topics?apikey=' . getenv('API_KEY'));
-        $topics_content = $response->getContent();
-        $topics_content = json_decode($topics_content);
-
-        $response = $client->request('GET', getenv('API_SITE') . '/forums/' . $forum_content->id . '/tags?apikey=' . getenv('API_KEY'));
-        $tags_content = $response->getContent();
-        $tags_content = json_decode($tags_content);
-
-        return view('forum', compact('forum_content', 'moderators_content', 'rules_content', 'topics_content', 'tags_content'));
+        return view('topicPost', compact('topic_content', 'forum_id', 'forum_slug', 'topic_id', 'topic_slug'));
     }
 
+    /**
+     * Call API to store a newly created forum
+     */
+    public function store(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'body' => 'required',
+            'status' => 'required',
+            'author_id' => 'required',
+        ]);
+
+        if ($validate->fails()) {
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
+        $request_data = $request->all();
+        $response = Http::timeout(3)->post(getenv('API_SITE') . '/comments/type/topic/' . $request_data['topic_id']  . '?apikey=' . getenv('API_KEY'), [
+            'body' => $request_data['body'],
+            'status' => $request_data['status'],
+            'author_id' => $request_data['author_id'],
+        ]);
+
+        if (!$response->successful()) {
+            $results = json_decode($response->getBody(), true);
+            $validate->getMessageBag()->add('HTTP-FAIL',$results);
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
+        return redirect(getenv('FORUM_CLIENT') . '/topicPost/' . $request_data['forum_id'] . '/' . $request_data['forum_slug'] . '/' . $request_data['topic_id'] . '/' . $request_data['topic_slug']);
+    }
 
     /**
      */

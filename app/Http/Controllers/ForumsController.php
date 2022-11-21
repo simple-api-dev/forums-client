@@ -2,23 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use Symfony\Component\HttpClient\HttpClient;
+use Illuminate\Support\Facades\Http;
 
 class ForumsController extends Controller
 {
     public function show()
     {
-        $client = HttpClient::create();
-        $response = $client->request('GET', getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'));
-        $content = $response->getContent();
-        $content = json_decode($content);
-
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $content = json_decode($response);
         return view('forums', compact('content'));
     }
 
 
-    /**
-     */
     public function __construct()
     {
     }

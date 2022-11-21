@@ -1,41 +1,45 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <title>Forum-Client</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    @vite('resources/css/app.css')
-</head>
+@extends('layout.master')
 
-<body>
-<h3>Edit Moderator</h3>
-<form action="{{getenv('FORUM_CLIENT')}}/updateModerator" method="POST">
-    @csrf
-    <input type="hidden" name="forum_id" id="forum_id" value="{{$forum_id}}">
-    <input type="hidden" name="forum_slug" id="forum_slug" value="{{$forum_slug}}">
-    <input type="hidden" name="id" id="id" value="{{$moderator_content->id}}">
+@section('content')
+<div class="text-black text-2xl m-10 font-extrabold">Edit Moderator</div>
+<div class="overflow-y-scroll bg-stone-500 m-10 rounded-lg">
+    <form class="bg-slate-100 p-5" method="POST" action="{{getenv('FORUM_CLIENT')}}/updateModerator">
+        @csrf
 
-    <div class="p-2">
-        <label class="font-extrabold">Author Id</label>
-        <div>
-            <span class="bg-slate-100">{{$moderator_content->author_id}}</span>
+        <input type="hidden" name="forum_id" id="forum_id" value="{{$forum_id}}">
+        <input type="hidden" name="forum_slug" id="forum_slug" value="{{$forum_slug}}">
+        <input type="hidden" name="id" id="id" value="{{$moderator_content->id}}">
+
+
+        <div class="p-2">
+            <label class="font-extrabold">Author Id</label>
+            <div>
+                <span class="bg-slate-100">{{$moderator_content->author_id}}</span>
+            </div>
         </div>
-    </div>
 
-    <div class="p-2">
-        <label class="font-extrabold" for="status">Status</label>
-        <div>
-        <select required name="status" id="status">
-            @foreach($statuses  as $key => $value)
-                <option
-                    value="{{ $key }}" {{$moderator_content->status == $key  ? 'selected' : ''}}>{{ $value}}</option>
-            @endforeach
-        </select>
+        <div class="p-2">
+            <label class="font-extrabold" for="status">Status</label>
+            <div>
+                <select required name="status" id="status">
+                    @foreach($statuses  as $key => $value)
+                        <option
+                            value="{{ $key }}" {{$moderator_content->status == $key  ? 'selected' : ''}}>{{ $value}}</option>
+                    @endforeach
+                </select>
+            </div>
         </div>
-    </div>
 
-    <input type="reset" name="reset" value="Reset">
-    <input type="submit" name="submit" value="Submit">
-</form>
-</body>
-</html>
+        <div class="p-5 text-right">
+            <a class="bg-blue-800 rounded-lg p-1 text-white hover:bg-blue-600"
+               href="{{getenv('FORUM_CLIENT')}}">Cancel</a>
+            <button class="bg-blue-800 rounded-lg p-1 text-white hover:bg-blue-600" type="submit">Submit</button>
+        </div>
+    </form>
+</div>
+@endsection
+
+
+@section('footer')
+    <footer>© 2022 Client Forum</footer>
+@endsection
