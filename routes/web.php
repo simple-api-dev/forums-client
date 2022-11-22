@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\CommentOnTopicController;
+use App\Http\Controllers\commentController;
 use App\Http\Controllers\ForumController;
 use App\Http\Controllers\ForumTagsController;
 use App\Http\Controllers\ModeratorController;
@@ -57,11 +57,8 @@ Route::post('/updateTopic', [TopicController::class, 'update']);
 Route::get('/upvoteTopic/{forum_id}/{forum_slug}/{id}', [TopicController::class, 'upvote'], 'forum_id', 'forum_slug', 'id');
 Route::get('/downvoteTopic/{forum_id}/{forum_slug}/{id}', [TopicController::class, 'downvote'], 'forum_id', 'forum_slug', 'id');
 
-Route::get('/createCommentOnTopic/{id}', [CommentOnTopicController::class, 'create'], 'id');
-Route::post('/storeCommentOnTopic', [CommentOnTopicController::class, 'store']);
-Route::get('/deleteCommentOnTopic/{id}', [CommentOnTopicController::class, 'destroy'], 'id');
-Route::get('/editCommentOnTopic/{id}', [CommentOnTopicController::class, 'edit'], 'id');
-Route::post('/updateCommentOnTopic', [CommentOnTopicController::class, 'update']);
-
 Route::get('/topicShow/{forum_id}/{forum_slug}/{topic_id}/{topic_slug}', [topicShowController::class, 'show'], 'forum_id', 'forum_slug', 'topic_id', 'topic_slug');
-Route::post('/storeCommentPost', [topicShowController::class, 'store']);
+Route::post('/storeCommentPost', [commentController::class, 'store']);
+Route::get('/deleteComment/{forum_id}/{forum_slug}/{topic_id}/{topic_slug}/{id}', [commentController::class, 'destroy'], 'forum_id', 'forum_slug', 'topic_id', 'topic_slug', 'id');
+Route::post('/storeCommentCommentPost', [commentController::class, 'storeCommentComment']);
+
