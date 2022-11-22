@@ -24,7 +24,6 @@ class ForumTagsController extends Controller
     {
         $validate = Validator::make($request->all(), [
             'name' => 'required',
-            'status' => 'required',
         ]);
 
         if ($validate->fails()) {
@@ -34,7 +33,6 @@ class ForumTagsController extends Controller
         $request_data = $request->all();
         $response = Http::timeout(3)->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/tags?apikey=' . getenv('API_KEY'), [
                 'name' => $request_data['name'],
-                'status' => $request_data['status'],
         ]);
 
         if ($response->status() <> 200) {
@@ -46,6 +44,20 @@ class ForumTagsController extends Controller
         }
 
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
+    }
+
+
+    /**
+     * Call API to remove the specified moderator
+     */
+    public function destroy($forum_id, $forum_slug, $id)
+    {
+        $response = Http::timeout(3)->delete(getenv('API_SITE') . '/tags/' . $id . '?apikey=' . getenv('API_KEY'), []);
+
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 
     /**

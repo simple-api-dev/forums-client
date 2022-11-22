@@ -27,7 +27,7 @@
     <div class="p-2">
         <label class="font-extrabold" for="body">Body</label>
         <div>
-        <input type="text" name="body" id="body" value="{{$topic_content->body}}">
+        <textarea name="body" id="body" rows="3" cols="40">{{$topic_content->body}}</textarea>
         </div>
     </div>
 
@@ -53,21 +53,19 @@
         <span class="bg-slate-100">{{$topic_content->author_id}}</span>
     </div>
 
-    @if(!empty($topic_content->tag_names))
+    @if(!empty($tags))
         <div class="p-2">
             <label class="font-extrabold" for="tags">Tags</label>
             <div>
-            <input type="text" name="tags" id="tags" value="{{$topic_content->tag_names[0]}}">
-            </div>
-        </div>
-    @else
-        <div class="p-2">
-            <label class="font-extrabold" for="tags">Tags</label>
-            <div>
-            <input type="text" name="tags" id="tags">
+                <select name="tags[]" id="tags" multiple>
+                    @foreach($tags  as $key => $tag)
+                        <option value="{{$tag->id}} {{Arr::exists($topic_content->tag_names, $tag->id)   ? 'selected=selected' : ''}}">{{$tag->name}}</option>
+                    @endforeach
+                </select>
             </div>
         </div>
     @endif
+
 
     <label class="font-extrabold">Reports</label>
     <div>
@@ -82,7 +80,7 @@
     <div class="p-5 text-right">
         <a class="bg-blue-800 rounded-lg p-1 text-white hover:bg-blue-600"
            href="{{getenv('FORUM_CLIENT')}}/forum/{{$forum_id}}/{{$forum_slug}}">Cancel</a>
-        <button class="bg-blue-800 rounded-lg p-1 text-white hover:bg-blue-600" type="submit">Submit</button>
+        <button class="btn" type="submit">Submit</button>
     </div>
 </form>
         @endsection

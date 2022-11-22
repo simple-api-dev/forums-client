@@ -4,11 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Symfony\Component\HttpClient\HttpClient;
-use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
-use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
-use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
-use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
+use Illuminate\Support\Facades\Validator;
 
 class RuleController extends Controller
 {
@@ -32,19 +28,30 @@ class RuleController extends Controller
      */
     public function store(Request $request)
     {
+        $validate = Validator::make($request->all(), [
+            'body' => 'required',
+            'author_id' => 'required',
+            'status' => 'required',
+        ]);
+
+        if ($validate->fails()) {
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
         $request_data = $request->all();
-        $httpClient = HttpClient::create();
+        $response = Http::timeout(3)->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/rules?apikey=' . getenv('API_KEY'), [
+                'author_id' => $request_data['author_id'],
+                'body' => $request_data['body'],
+                'status' => $request_data['status'],
+        ]);
 
-
-            $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/rules?apikey=' . getenv('API_KEY'), [
-                'headers' => [
-                    'Content-Type' => 'application/json',],
-                'body' => json_encode([
-                    'author_id' => $request_data['author_id'],
-                    'body' => $request_data['body'],
-                    'status' => $request_data['status'],
-                ])
-            ]);
+        if ($response->status() <> 200) {
+            $results = json_decode($response->getBody(), true);
+            foreach ($results as $key => $value) {
+                $validate->getMessageBag()->add($key, $value);
+            }
+            return back()->withErrors($validate->errors())->withInput();
+        }
 
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
     }
@@ -62,9 +69,9 @@ class RuleController extends Controller
 
         $statuses = array(
             'Active' => 'Active',
+            'Draft' => 'Draft',
             'Disabled' => 'Disabled',
         );
-
 
         return view('editRule', compact('rule_content', 'statuses', 'id', 'forum_id', 'forum_slug'));
     }
@@ -74,20 +81,27 @@ class RuleController extends Controller
      */
     public function update(Request $request)
     {
+        $validate = Validator::make($request->all(), [
+            'body' => 'required',
+            'status' => 'required',
+            'author_id' => 'required',
+        ]);
+
+        if ($validate->fails()) {
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
         $request_data = $request->all();
-        $httpClient = HttpClient::create();
-        try {
-            $httpClient->request('PUT', getenv('API_SITE') . '/rules/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
-                'headers' => [
-                    'Content-Type' => 'application/json',],
-                'body' => json_encode([
-                    'body' => $request_data['body'],
-                    'status' => $request_data['status'],
-                    'author_id' => $request_data['author_id'],
-                ])
-            ]);
-        } catch (TransportExceptionInterface $e) {
-            dd($e);
+        $response = Http::timeout(3)->put(getenv('API_SITE') . '/rules/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
+            'body' => $request_data['body'],
+            'status' => $request_data['status'],
+            'author_id' => $request_data['author_id'],
+        ]);
+
+        if (!$response->successful()) {
+            $results = json_decode($response->getBody(), true);
+            $validate->getMessageBag()->add('HTTP-FAIL', $results);
+            return back()->withErrors($validate->errors())->withInput();
         }
 
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
@@ -99,12 +113,11 @@ class RuleController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $id)
     {
-        $httpClient = HttpClient::create();
-        try {
-            $httpClient->request('DELETE', getenv('API_SITE') . '/rules/' . $id . '?apikey=' . getenv('API_KEY'), []);
-        } catch (TransportExceptionInterface $e) {
-            dd($e);
+        $response = Http::timeout(3)->delete(getenv('API_SITE') . '/rules/' . $id . '?apikey=' . getenv('API_KEY'), []);
+        if ($response->status() <> 200) {
+            dd($response);
         }
+
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 
@@ -113,12 +126,11 @@ class RuleController extends Controller
      */
     public function destroyAll($forum_id, $forum_slug)
     {
-        $httpClient = HttpClient::create();
-        try {
-            $httpClient->request('DELETE', getenv('API_SITE') . '/forums/' . $forum_id . '/rules?apikey=' . getenv('API_KEY'), []);
-        } catch (TransportExceptionInterface $e) {
-            dd($e);
+        $response = Http::timeout(3)->delete(getenv('API_SITE') . '/forums/' . $forum_id . '/rules?apikey=' . getenv('API_KEY'), []);
+        if ($response->status() <> 200) {
+            dd($response);
         }
+
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 

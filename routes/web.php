@@ -6,7 +6,7 @@ use App\Http\Controllers\ForumTagsController;
 use App\Http\Controllers\ModeratorController;
 use App\Http\Controllers\RuleController;
 use App\Http\Controllers\TopicController;
-use App\Http\Controllers\TopicPostController;
+use App\Http\Controllers\topicShowController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ForumsController;
 
@@ -34,11 +34,11 @@ Route::post('/updateForum', [ForumController::class, 'update']);
 
 Route::get('/createForumTag/{forum_id}/{forum_slug}', [ForumTagsController::class, 'create'], 'forum_id', 'forum_slug');
 Route::post('/storeForumTag', [ForumTagsController::class, 'store']);
+Route::get('/deleteForumTag/{forum_id}/{forum_slug}/{id}', [ForumTagsController::class, 'destroy'], 'forum_id', 'forum_slug', 'id');
 
 Route::get('/createModerator/{forum_id}/{forum_slug}', [ModeratorController::class, 'create'], 'forum_id', 'forum_slug');
 Route::post('/storeModerator', [ModeratorController::class, 'store']);
 Route::get('/deleteModerator/{forum_id}/{forum_slug}/{id}', [ModeratorController::class, 'destroy'], 'forum_id', 'forum_slug', 'id');
-Route::get('/editModerator/{forum_id}/{forum_slug}/{id}', [ModeratorController::class, 'edit'], 'forum_id', 'forum_slug', 'id');
 Route::post('/updateModerator', [ModeratorController::class, 'update']);
 
 Route::get('/createRule/{forum_id}/{forum_slug}', [RuleController::class, 'create'],'forum_id', 'forum_slug');
@@ -55,7 +55,7 @@ Route::get('/editTopic/{forum_id}/{forum_slug}/{slug}', [TopicController::class,
 Route::post('/updateTopic', [TopicController::class, 'update']);
 
 Route::get('/upvoteTopic/{forum_id}/{forum_slug}/{id}', [TopicController::class, 'upvote'], 'forum_id', 'forum_slug', 'id');
-Route::get('/downvoteTopic/{forum_id}/{forum_slug}/{id}', [TopicController::class, 'upvote'], 'forum_id', 'forum_slug', 'id');
+Route::get('/downvoteTopic/{forum_id}/{forum_slug}/{id}', [TopicController::class, 'downvote'], 'forum_id', 'forum_slug', 'id');
 
 Route::get('/createCommentOnTopic/{id}', [CommentOnTopicController::class, 'create'], 'id');
 Route::post('/storeCommentOnTopic', [CommentOnTopicController::class, 'store']);
@@ -63,5 +63,5 @@ Route::get('/deleteCommentOnTopic/{id}', [CommentOnTopicController::class, 'dest
 Route::get('/editCommentOnTopic/{id}', [CommentOnTopicController::class, 'edit'], 'id');
 Route::post('/updateCommentOnTopic', [CommentOnTopicController::class, 'update']);
 
-Route::get('/topicPost/{forum_id}/{forum_slug}/{topic_id}/{topic_slug}', [TopicPostController::class, 'show'], 'forum_id', 'forum_slug', 'topic_id', 'topic_slug');
-Route::post('/storeTopicPost', [TopicPostController::class, 'store']);
+Route::get('/topicShow/{forum_id}/{forum_slug}/{topic_id}/{topic_slug}', [topicShowController::class, 'show'], 'forum_id', 'forum_slug', 'topic_id', 'topic_slug');
+Route::post('/storeCommentPost', [topicShowController::class, 'store']);

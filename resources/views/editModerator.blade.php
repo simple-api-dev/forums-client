@@ -32,8 +32,8 @@
 
         <div class="p-5 text-right">
             <a class="bg-blue-800 rounded-lg p-1 text-white hover:bg-blue-600"
-               href="{{getenv('FORUM_CLIENT')}}">Cancel</a>
-            <button class="bg-blue-800 rounded-lg p-1 text-white hover:bg-blue-600" type="submit">Submit</button>
+               href="{{getenv('FORUM_CLIENT')}}/forum/{{$forum_id}}/{{$forum_slug}}">Cancel</a>
+            <button class="btn" type="submit">Submit</button>
         </div>
     </form>
 </div>

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Symfony\Component\HttpClient\HttpClient;
+use Illuminate\Support\Facades\Validator;
 
 class TopicController extends Controller
 {
@@ -20,7 +20,13 @@ class TopicController extends Controller
      */
     public function create($forum_id, $forum_slug)
     {
-        return view('createTopic', compact('forum_id', 'forum_slug'));
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $forum_id . '/tags?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $tags = json_decode($response);
+
+        return view('createTopic', compact('forum_id', 'forum_slug', 'tags'));
     }
 
     /**
@@ -28,21 +34,40 @@ class TopicController extends Controller
      */
     public function store(Request $request)
     {
-        $request_data = $request->all();
-        $httpClient = HttpClient::create();
+        $validate = Validator::make($request->all(), [
+            'title' => 'required',
+            'body' => 'required',
+            'status' => 'required',
+            'type' => 'required',
+            'author_id' => 'required',
+        ]);
 
-        $httpClient->request('POST', getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/topics?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json',],
-            'body' => json_encode([
+        if ($validate->fails()) {
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
+        $request_data = $request->all();
+        $tags = [];
+        if(isset($request_data['tags'])){
+            $tags = $request_data['tags'];
+        }
+        $response = Http::timeout(3)->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/topics?apikey=' . getenv('API_KEY'), [
                 'title' => $request_data['title'],
                 'body' => $request_data['body'],
                 'status' => $request_data['status'],
                 'type' => $request_data['type'],
                 'author_id' => $request_data['author_id'],
-                'tags' => ['one','two','three'],
-            ])
+                'tags' => $tags,
         ]);
+
+        if ($response->status() <> 200) {
+            $results = json_decode($response->getBody(), true);
+            foreach ($results as $key => $value) {
+                $validate->getMessageBag()->add($key, $value);
+            }
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
     }
 
@@ -51,6 +76,12 @@ class TopicController extends Controller
      */
     public function edit($forum_id, $forum_slug, $slug)
     {
+        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $forum_id . '/tags?apikey=' . getenv('API_KEY'));
+        if ($response->status() <> 200) {
+            dd($response);
+        }
+        $tags = json_decode($response);
+
         $response = Http::timeout(3)->get(getenv('API_SITE') . '/topics/' . $slug . '?apikey=' . getenv('API_KEY'));
         if ($response->status() <> 200) {
             dd($response);
@@ -70,7 +101,7 @@ class TopicController extends Controller
             'Pending Review' => 'Pending Review',
             'Locked' => 'Locked',
         );
-        return view('editTopic', compact('topic_content', 'statuses', 'types','forum_id','forum_slug'));
+        return view('editTopic', compact('topic_content', 'statuses', 'types','forum_id','forum_slug', 'tags'));
     }
 
     /**
@@ -78,18 +109,31 @@ class TopicController extends Controller
      */
     public function update(Request $request)
     {
-        $request_data = $request->all();
+        $validate = Validator::make($request->all(), [
+            'body' => 'required',
+            'status' => 'required',
+        ]);
 
-        $httpClient = HttpClient::create();
-        $httpClient->request('PUT', getenv('API_SITE') . '/topics/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json',],
-            'body' => json_encode([
+        if ($validate->fails()) {
+            return back()->withErrors($validate->errors())->withInput();
+        }
+
+        $request_data = $request->all();
+        $tags = [];
+        if(isset($request_data['tags'])){
+            $tags = $request_data['tags'];
+        }
+        $response = Http::timeout(3)->put(getenv('API_SITE') . '/topics/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
                 'body' => $request_data['body'],
                 'status' => $request_data['status'],
-                'tags' => array($request_data['tags']),
-            ])
+                'tags' => $tags,
         ]);
+
+        if (!$response->successful()) {
+            $results = json_decode($response->getBody(), true);
+            $validate->getMessageBag()->add('HTTP-FAIL', $results);
+            return back()->withErrors($validate->errors())->withInput();
+        }
 
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id']  . '/' .$request_data['forum_slug'] );
     }
@@ -100,8 +144,7 @@ class TopicController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $id)
     {
-        $httpClient = HttpClient::create();
-        $httpClient->request('DELETE', getenv('API_SITE') . '/topics/' . $id . '?apikey=' . getenv('API_KEY'), []);
+        $response = Http::timeout(3)->delete(getenv('API_SITE') . '/topics/' . $id . '?apikey=' . getenv('API_KEY'), []);
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 
@@ -111,15 +154,12 @@ class TopicController extends Controller
      */
     public function upvote($forum_id, $forum_slug, $id)
     {
-        $httpClient = HttpClient::create();
-        $httpClient->request('POST', getenv('API_SITE') . '/votes/up/topic/' . $id . '?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json',],
-            'body' => json_encode([
+        $response = Http::timeout(3)->post(getenv('API_SITE') . '/votes/up/topic/' . $id . '?apikey=' . getenv('API_KEY'), [
                 'author_id' => "DAN-3",
-            ])
         ]);
-
+        if ($response->status() <> 200) {
+            dd($response);
+        }
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 
@@ -128,15 +168,12 @@ class TopicController extends Controller
      */
     public function downvote($forum_id, $forum_slug, $id)
     {
-        $httpClient = HttpClient::create();
-        $httpClient->request('POST', getenv('API_SITE') . '/votes/down/topic/' . $id . '?apikey=' . getenv('API_KEY'), [
-            'headers' => [
-                'Content-Type' => 'application/json',],
-            'body' => json_encode([
+        $response = Http::timeout(3)->post(getenv('API_SITE') . '/votes/down/topic/' . $id . '?apikey=' . getenv('API_KEY'), [
                 'author_id' => "JO-22",
-            ])
         ]);
-
+        if ($response->status() <> 200) {
+            dd($response);
+        }
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 

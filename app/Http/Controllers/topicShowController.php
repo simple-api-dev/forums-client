@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpClient\HttpClient;
 
-class TopicPostController extends Controller
+class topicShowController extends Controller
 {
     /**
      * Display the specified topic details

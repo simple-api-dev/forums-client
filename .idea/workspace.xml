@@ -172,7 +172,7 @@
       <option name="presentableId" value="Default" />
       <updated>1668524917718</updated>
       <workItem from="1668524919355" duration="22680000" />
-      <workItem from="1668610118202" duration="156793000" />
+      <workItem from="1668610118202" duration="186319000" />
     </task>
     <servers />
   </component>
@@ -189,16 +189,5 @@
         </entry>
       </map>
     </option>
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="php">
-          <url>file://$PROJECT_DIR$/resources/views/createModerator.blade.php</url>
-          <line>16</line>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>

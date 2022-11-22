@@ -31,7 +31,6 @@ class ModeratorController extends Controller
     {
         $validate = Validator::make($request->all(), [
             'author_id' => 'required',
-            'status' => 'required',
         ]);
 
         if ($validate->fails()) {
@@ -40,7 +39,6 @@ class ModeratorController extends Controller
 
         $request_data = $request->all();
         $response = Http::timeout(3)->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/moderators?apikey=' . getenv('API_KEY'), [
-            'status' => $request_data['status'],
             'author_id' => $request_data['author_id'],
         ]);
 
@@ -55,41 +53,6 @@ class ModeratorController extends Controller
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
     }
 
-    /**
-     * Show the form for editing the moderator.
-     */
-    public function edit($forum_id, $forum_slug, $id)
-    {
-        $response = Http::timeout(3)->get(getenv('API_SITE') . '/moderators/' . $id . '?apikey=' . getenv('API_KEY'));
-        if ($response->status() <> 200) {
-            dd($response);
-        }
-        $moderator_content = json_decode($response);
-
-        $statuses = array(
-            'Active' => 'Active',
-            'Disabled' => 'Disabled',
-        );
-
-        return view('editModerator', compact('moderator_content', 'statuses', 'forum_id', 'forum_slug', 'id'));
-    }
-
-    /**
-     * Call API to update the specified moderator
-     */
-    public function update(Request $request)
-    {
-        $request_data = $request->all();
-        $response = Http::timeout(3)->put(getenv('API_SITE') . '/moderators/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
-                'status' => $request_data['status'],
-        ]);
-
-        if ($response->status() <> 200) {
-            dd($response);
-        }
-
-        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
-    }
 
 
     /**
