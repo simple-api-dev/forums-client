@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use http\Message;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
@@ -48,16 +49,16 @@ class TopicController extends Controller
 
         $request_data = $request->all();
         $tags = [];
-        if(isset($request_data['tags'])){
+        if (isset($request_data['tags'])) {
             $tags = $request_data['tags'];
         }
         $response = Http::timeout(3)->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/topics?apikey=' . getenv('API_KEY'), [
-                'title' => $request_data['title'],
-                'body' => $request_data['body'],
-                'status' => $request_data['status'],
-                'type' => $request_data['type'],
-                'author_id' => $request_data['author_id'],
-                'tags' => $tags,
+            'title' => $request_data['title'],
+            'body' => $request_data['body'],
+            'status' => $request_data['status'],
+            'type' => $request_data['type'],
+            'author_id' => $request_data['author_id'],
+            'tags' => $tags,
         ]);
 
         if ($response->status() <> 200) {
@@ -101,7 +102,7 @@ class TopicController extends Controller
             'Pending Review' => 'Pending Review',
             'Locked' => 'Locked',
         );
-        return view('editTopic', compact('topic_content', 'statuses', 'types','forum_id','forum_slug', 'tags'));
+        return view('editTopic', compact('topic_content', 'statuses', 'types', 'forum_id', 'forum_slug', 'tags'));
     }
 
     /**
@@ -120,13 +121,13 @@ class TopicController extends Controller
 
         $request_data = $request->all();
         $tags = [];
-        if(isset($request_data['tags'])){
+        if (isset($request_data['tags'])) {
             $tags = $request_data['tags'];
         }
         $response = Http::timeout(3)->put(getenv('API_SITE') . '/topics/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
-                'body' => $request_data['body'],
-                'status' => $request_data['status'],
-                'tags' => $tags,
+            'body' => $request_data['body'],
+            'status' => $request_data['status'],
+            'tags' => $tags,
         ]);
 
         if (!$response->successful()) {
@@ -135,7 +136,7 @@ class TopicController extends Controller
             return back()->withErrors($validate->errors())->withInput();
         }
 
-        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id']  . '/' .$request_data['forum_slug'] );
+        return redirect(getenv('FORUM_CLIENT') . '/forum/' . $request_data['forum_id'] . '/' . $request_data['forum_slug']);
     }
 
 
@@ -154,12 +155,17 @@ class TopicController extends Controller
      */
     public function upvote($forum_id, $forum_slug, $id)
     {
-        $response = Http::timeout(3)->post(getenv('API_SITE') . '/votes/up/topic/' . $id . '?apikey=' . getenv('API_KEY'), [
+        try {
+            $response = Http::timeout(3)->post(getenv('API_SITE') . '/votes/up/topic/' . $id . '?apikey=' . getenv('API_KEY'), [
                 'author_id' => "DAN-3",
-        ]);
+            ]);
+        } catch (\Exception $e){
+            dd($e->getMessage());
+        }
         if ($response->status() <> 200) {
             dd($response);
         }
+
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 
@@ -169,7 +175,7 @@ class TopicController extends Controller
     public function downvote($forum_id, $forum_slug, $id)
     {
         $response = Http::timeout(3)->post(getenv('API_SITE') . '/votes/down/topic/' . $id . '?apikey=' . getenv('API_KEY'), [
-                'author_id' => "JO-22",
+            'author_id' => "JO-22",
         ]);
         if ($response->status() <> 200) {
             dd($response);

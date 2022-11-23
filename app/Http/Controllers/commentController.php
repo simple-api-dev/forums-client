@@ -26,17 +26,21 @@ class commentController extends Controller
         }
 
         $request_data = $request->all();
+
         $response = Http::timeout(3)->post(getenv('API_SITE') . '/comments/type/topic/' . $request_data['topic_id']  . '?apikey=' . getenv('API_KEY'), [
             'body' => $request_data['body'],
             'status' => $request_data['status'],
             'author_id' => $request_data['author_id'],
         ]);
 
-        if (!$response->successful()) {
+        if ($response->status() <> 200) {
             $results = json_decode($response->getBody(), true);
-            $validate->getMessageBag()->add('HTTP-FAIL',$results);
+            foreach ($results as $key => $value) {
+                $validate->getMessageBag()->add($key, $value);
+            }
             return back()->withErrors($validate->errors())->withInput();
         }
+
 
         return redirect(getenv('FORUM_CLIENT') . '/topicShow/' . $request_data['forum_id'] . '/' . $request_data['forum_slug'] . '/' . $request_data['topic_id'] . '/' . $request_data['topic_slug']);
     }
