@@ -4,6 +4,7 @@ use App\Http\Controllers\commentController;
 use App\Http\Controllers\ForumController;
 use App\Http\Controllers\ForumTagsController;
 use App\Http\Controllers\ModeratorController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RuleController;
 use App\Http\Controllers\TopicController;
 use App\Http\Controllers\topicShowController;
@@ -53,6 +54,10 @@ Route::post('/storeTopic', [TopicController::class, 'store']);
 Route::get('/deleteTopic/{forum_id}/{forum_slug}/{id}', [TopicController::class, 'destroy'], 'forum_id','forum_slug', 'id');
 Route::get('/editTopic/{forum_id}/{forum_slug}/{slug}', [TopicController::class, 'edit'], 'forum_id','forum_slug', 'slug');
 Route::post('/updateTopic', [TopicController::class, 'update']);
+
+Route::get('/reportTopic/{forum_id}/{forum_slug}/{id}', [ReportController::class, 'report'], 'forum_id','forum_slug', 'id');
+Route::get('/approveReport/{forum_id}/{forum_slug}/{id}', [ReportController::class, 'approveReport'], 'forum_id', 'forum_slug', 'id');
+Route::get('/declineReport/{forum_id}/{forum_slug}/{id}', [ReportController::class, 'declineReport'], 'forum_id', 'forum_slug', 'id');
 
 Route::get('/upvoteTopic/{forum_id}/{forum_slug}/{id}', [TopicController::class, 'upvote'], 'forum_id', 'forum_slug', 'id');
 Route::get('/downvoteTopic/{forum_id}/{forum_slug}/{id}', [TopicController::class, 'downvote'], 'forum_id', 'forum_slug', 'id');

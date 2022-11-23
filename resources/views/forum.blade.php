@@ -43,6 +43,8 @@
                                         class="fa fa-pen text-gray-300 hover:text-black"></i></a>
                                 <a href="{{getenv('FORUM_CLIENT')}}/deleteTopic/{{$forum_content->id}}/{{$forum_content->slug}}/{{$item->id}}?apikey={{getenv('API_KEY')}}"><i
                                         class="fa fa-trash text-gray-300 hover:text-black"></i></a>
+                                <a href="{{getenv('FORUM_CLIENT')}}/reportTopic/{{$forum_content->id}}/{{$forum_content->slug}}/{{$item->id}}?apikey={{getenv('API_KEY')}}"><i
+                                        class="fa fa-flag text-gray-300 hover:text-black"></i></a>
                                 <br>
                                 <span>{{$item->body}}</span>
                                 <br>
@@ -56,8 +58,12 @@
                                 @if(!empty($item->reports))
                                     <div class="clear-both">Reports:</div>
                                     @foreach($item->reports as $report)
-                                        <div>By:{{$report->author_id}} | Status:{{$report->status}} |
-                                            Type:{{$report->type}}</div>
+                                        <div>By:{{$report->author_id}} | Status:{{$report->status}} | Type:{{$report->type}}
+                                            <a href="{{getenv('FORUM_CLIENT')}}/approveReport/{{$forum_content->id}}/{{$forum_content->slug}}/{{$report->id}}?apikey={{getenv('API_KEY')}}"><i
+                                                    class="fa fa-check"></i></a>
+                                            <a href="{{getenv('FORUM_CLIENT')}}/declineReport/{{$forum_content->id}}/{{$forum_content->slug}}/{{$report->id}}?apikey={{getenv('API_KEY')}}"><i
+                                                    class="fa fa-comment-slash"></i></a>
+                                        </div>
                                     @endforeach
                                 @endif
                             </div>
