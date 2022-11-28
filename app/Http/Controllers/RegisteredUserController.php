@@ -41,9 +41,7 @@ class RegisteredUserController extends Controller
             return back()->withErrors($validate->errors())->withInput();
         }
 
-        $msg = (string) $response->getBody();
-        dd($msg);
-        
-        return redirect(getenv('FORUM_CLIENT'));
+        $message = $response->getBody();
+        return view('auth.registerSuccessful', compact('message'));
     }
 }

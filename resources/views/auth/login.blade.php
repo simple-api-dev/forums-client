@@ -1,7 +1,7 @@
 @extends('layout.master')
 @section('content')
     <div class="text-black text-2xl m-10 font-extrabold">Login</div>
-    <div class="overflow-y-scroll bg-stone-500 m-10 rounded-lg">
+    <div class="overflow-y-scroll bg-stone-500 m-10 rounded-lg max-w-sm">
         <form class="bg-slate-200 p-5" method="POST" action="{{getenv('FORUM_CLIENT')}}/storeLogin">
             @csrf
 
@@ -13,11 +13,6 @@
             <div class="mt-4">
                 <label for="password">Password</label>
                 <input class="block mt-1 w-full" type="password" name="password" id="password" required autocomplete="current_password">
-            </div>
-
-            <div class="mt-4">
-                <label class="inline-flex items-center" for="remember_me">Name</label>
-                <input class="block mt-1 w-full" type="checkbox" name="remember_me" id="remember_me">
             </div>
 
             <div class="block mt-4">
