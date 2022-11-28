@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="text-black text-3xl m-10 font-extrabold">Forums</div>
-    <div class="overflow-y-scroll max-h-[45rem] bg-slate-100 m-10 rounded-lg">
+    <div class="overflow-y-scroll max-h-[45rem] bg-slate-100 m-10 rounded-lg  w-1/4">
         <div class="grid gap-4 grid-cols-1 m-10">
             @foreach($content  as $key => $value)
                 <a href="{{getenv('FORUM_CLIENT')}}/forum/{{$value->id}}/{{$value->slug}}">

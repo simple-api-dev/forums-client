@@ -10,7 +10,8 @@ class ForumsController extends Controller
     {
         $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'));
         if ($response->status() <> 200) {
-            dd($response);
+            $msg = (string) $response->getBody();
+            dd($msg);
         }
         $content = json_decode($response);
         return view('forums', compact('content'));

@@ -3,7 +3,9 @@
 use App\Http\Controllers\commentController;
 use App\Http\Controllers\ForumController;
 use App\Http\Controllers\ForumTagsController;
+use App\Http\Controllers\LoginUserController;
 use App\Http\Controllers\ModeratorController;
+use App\Http\Controllers\RegisteredUserController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RuleController;
 use App\Http\Controllers\TopicController;
@@ -66,4 +68,12 @@ Route::get('/topicShow/{forum_id}/{forum_slug}/{topic_id}/{topic_slug}', [topicS
 Route::post('/storeCommentPost', [commentController::class, 'store']);
 Route::get('/deleteComment/{forum_id}/{forum_slug}/{topic_id}/{topic_slug}/{id}', [commentController::class, 'destroy'], 'forum_id', 'forum_slug', 'topic_id', 'topic_slug', 'id');
 Route::post('/storeCommentCommentPost', [commentController::class, 'storeCommentComment']);
+
+Route::get('/register', [RegisteredUserController::class, 'create']);
+Route::post('/storeRegister', [RegisteredUserController::class, 'store']);
+
+Route::get('/login', [LoginUserController::class, 'create']);
+Route::post('/login', [LoginUserController::class, 'store']);
+Route::delete('/login', [LoginUserController::class, 'destroy']);
+
 
