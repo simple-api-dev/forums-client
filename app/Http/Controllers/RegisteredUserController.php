@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules;
@@ -32,7 +33,7 @@ class RegisteredUserController extends Controller
             'integration_id' => getenv('INTEGRATION_ID'),
             'name' => $request_data['name'],
             'email' => $request_data['email'],
-            'password' => $request_data['password'],
+            'password' => Hash::make($request_data['password']),
         ]);
 
         if (!$response->successful()) {

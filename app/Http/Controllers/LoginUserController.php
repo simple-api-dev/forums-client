@@ -51,7 +51,7 @@ class LoginUserController extends Controller
 
     public function destroy(Request $request)
     {
-        $response = Http::post(getenv('AUTH_SITE') . '/logout/?apikey=' . getenv('AUTH_APIKEY'), [
+        Http::post(getenv('AUTH_SITE') . '/logout/?apikey=' . getenv('AUTH_APIKEY'), [
             'token' => $request->session()->get('key'),
         ]);
 

@@ -35,9 +35,9 @@
     </div>
     <div class="">
         @if(Session::has('author_id'))
-            Token:{{Session::get('token')}}
-            Welcome:{{Session::get('author_id')}}
-            <a href="{{getenv('FORUM_CLIENT')}}/destroyLogin">Logout</a>
+            <span></span>Token:{{Session::get('token')}}
+            <span class="font-extrabold">{{Session::get('author_id')}}</span>
+            <a class="btn" href="{{getenv('FORUM_CLIENT')}}/destroyLogin">Logout</a>
         @else
             <a class="btn" href="{{getenv('FORUM_CLIENT')}}/login">Login</a>
             <a class="btn" href="{{getenv('FORUM_CLIENT')}}/register">Register</a>
