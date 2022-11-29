@@ -39,7 +39,7 @@ class RuleController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::timeout(3)->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/rules?apikey=' . getenv('API_KEY'), [
+        $response = Http::post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/rules?apikey=' . getenv('API_KEY'), [
                 'author_id' => $request_data['author_id'],
                 'body' => $request_data['body'],
                 'status' => $request_data['status'],
@@ -61,7 +61,7 @@ class RuleController extends Controller
      */
     public function edit($forum_id, $forum_slug, $id)
     {
-        $response = Http::timeout(3)->get(getenv('API_SITE') . '/rules/' . $id . '?apikey=' . getenv('API_KEY'));
+        $response = Http::get(getenv('API_SITE') . '/rules/' . $id . '?apikey=' . getenv('API_KEY'));
         if ($response->status() <> 200) {
             dd($response);
         }
@@ -92,7 +92,7 @@ class RuleController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::timeout(3)->put(getenv('API_SITE') . '/rules/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
+        $response = Http::put(getenv('API_SITE') . '/rules/' . $request_data['id'] , [
             'body' => $request_data['body'],
             'status' => $request_data['status'],
             'author_id' => $request_data['author_id'],
@@ -113,7 +113,7 @@ class RuleController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $id)
     {
-        $response = Http::timeout(3)->delete(getenv('API_SITE') . '/rules/' . $id . '?apikey=' . getenv('API_KEY'), []);
+        $response = Http::delete(getenv('API_SITE') . '/rules/' . $id , []);
         if ($response->status() <> 200) {
             dd($response);
         }
@@ -126,7 +126,7 @@ class RuleController extends Controller
      */
     public function destroyAll($forum_id, $forum_slug)
     {
-        $response = Http::timeout(3)->delete(getenv('API_SITE') . '/forums/' . $forum_id . '/rules?apikey=' . getenv('API_KEY'), []);
+        $response = Http::delete(getenv('API_SITE') . '/forums/' . $forum_id . '/rules?apikey=' . getenv('API_KEY'), []);
         if ($response->status() <> 200) {
             dd($response);
         }

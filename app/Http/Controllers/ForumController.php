@@ -13,32 +13,32 @@ class ForumController extends Controller
      */
     public function show($id, $slug)
     {
-        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $slug . '?apikey=' . getenv('API_KEY'));
+        $response = Http::get(getenv('API_SITE') . '/forums/' . $slug . '?apikey=' . getenv('API_KEY'));
         if ($response->status() <> 200) {
             dd($response);
         }
         $forum_content = json_decode($response);
 
-        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $forum_content->id . '/moderators?apikey=' . getenv('API_KEY'));
+        $response = Http::get(getenv('API_SITE') . '/forums/' . $forum_content->id . '/moderators?apikey=' . getenv('API_KEY'));
         if ($response->status() <> 200) {
             dd($response);
         }
         $moderators_content = json_decode($response);
 
 
-        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $forum_content->id . '/rules?apikey=' . getenv('API_KEY'));
+        $response = Http::get(getenv('API_SITE') . '/forums/' . $forum_content->id . '/rules?apikey=' . getenv('API_KEY'));
         if ($response->status() <> 200) {
             dd($response);
         }
         $rules_content = json_decode($response);
 
-        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $slug . '/topics?apikey=' . getenv('API_KEY'));
+        $response = Http::get(getenv('API_SITE') . '/forums/' . $slug . '/topics?apikey=' . getenv('API_KEY'));
         if ($response->status() <> 200) {
             dd($response);
         }
         $topics_content = json_decode($response);
 
-        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $forum_content->id . '/tags?apikey=' . getenv('API_KEY'));
+        $response = Http::get(getenv('API_SITE') . '/forums/' . $forum_content->id . '/tags?apikey=' . getenv('API_KEY'));
         if ($response->status() <> 200) {
             dd($response);
         }
@@ -72,7 +72,7 @@ class ForumController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::timeout(3)->post(getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'), [
+        $response = Http::post(getenv('API_SITE') . '/forums/?apikey=' . getenv('API_KEY'), [
             'title' => $request_data['title'],
             'body' => $request_data['body'],
             'status' => $request_data['status'],
@@ -94,7 +94,7 @@ class ForumController extends Controller
      */
     public function edit($id, $slug)
     {
-        $response = Http::timeout(3)->get(getenv('API_SITE') . '/forums/' . $slug . '?apikey=' . getenv('API_KEY'));
+        $response = Http::get(getenv('API_SITE') . '/forums/' . $slug . '?apikey=' . getenv('API_KEY'));
         if ($response->status() <> 200) {
             dd($response);
         }
@@ -125,7 +125,7 @@ class ForumController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::timeout(3)->put(getenv('API_SITE') . '/forums/' . $request_data['id'] . '?apikey=' . getenv('API_KEY'), [
+        $response = Http::put(getenv('API_SITE') . '/forums/' . $request_data['id'] , [
             'body' => $request_data['body'],
             'status' => $request_data['status'],
         ]);
@@ -144,7 +144,7 @@ class ForumController extends Controller
      */
     public function destroy($id)
     {
-        $response = Http::timeout(3)->delete(getenv('API_SITE') . '/forums/' . $id . '?apikey=' . getenv('API_KEY'), []);
+        $response = Http::delete(getenv('API_SITE') . '/forums/' . $id , []);
         if ($response->status() <> 200) {
             dd($response);
         }
@@ -153,7 +153,4 @@ class ForumController extends Controller
 
     /**
      */
-    public function __construct()
-    {
-    }
 }

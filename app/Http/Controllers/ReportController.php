@@ -13,7 +13,7 @@ class ReportController extends Controller
      */
     public function report($forum_id, $forum_slug, $id)
     {
-        $response = Http::timeout(3)->post(getenv('API_SITE') . '/reports/type/topic/' . $id . '?apikey=' . getenv('API_KEY'), [
+        $response = Http::post(getenv('API_SITE') . '/reports/type/topic/' . $id , [
             'author_id' => "DAN",
             'type' => "Offensive",
         ]);
@@ -28,7 +28,7 @@ class ReportController extends Controller
      */
     public function approveReport($forum_id, $forum_slug, $id)
     {
-        $response = Http::timeout(3)->put(getenv('API_SITE') . '/reports/' . $id . '?apikey=' . getenv('API_KEY'), [
+        $response = Http::put(getenv('API_SITE') . '/reports/' . $id , [
             'status' => "Approved",
         ]);
         if ($response->status() <> 200) {
@@ -42,7 +42,7 @@ class ReportController extends Controller
      */
     public function declineReport($forum_id, $forum_slug, $id)
     {
-        $response = Http::timeout(3)->put(getenv('API_SITE') . '/reports/' . $id . '?apikey=' . getenv('API_KEY'), [
+        $response = Http::put(getenv('API_SITE') . '/reports/' . $id , [
             'status' => "Declined",
         ]);
         if ($response->status() <> 200) {

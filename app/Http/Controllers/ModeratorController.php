@@ -38,7 +38,7 @@ class ModeratorController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::timeout(3)->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/moderators?apikey=' . getenv('API_KEY'), [
+        $response = Http::post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/moderators?apikey=' . getenv('API_KEY'), [
             'author_id' => $request_data['author_id'],
         ]);
 
@@ -60,7 +60,7 @@ class ModeratorController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $id)
     {
-        $response = Http::timeout(3)->delete(getenv('API_SITE') . '/moderators/' . $id . '?apikey=' . getenv('API_KEY'), []);
+        $response = Http::delete(getenv('API_SITE') . '/moderators/' . $id , []);
 
         if ($response->status() <> 200) {
             dd($response);

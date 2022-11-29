@@ -27,7 +27,7 @@ class commentController extends Controller
 
         $request_data = $request->all();
 
-        $response = Http::timeout(3)->post(getenv('API_SITE') . '/comments/type/topic/' . $request_data['topic_id']  . '?apikey=' . getenv('API_KEY'), [
+        $response = Http::post(getenv('API_SITE') . '/comments/type/topic/' . $request_data['topic_id']  , [
             'body' => $request_data['body'],
             'status' => $request_data['status'],
             'author_id' => $request_data['author_id'],
@@ -61,7 +61,7 @@ class commentController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::timeout(3)->post(getenv('API_SITE') . '/comments/type/comment/' . $request_data['id']  . '?apikey=' . getenv('API_KEY'), [
+        $response = Http::post(getenv('API_SITE') . '/comments/type/comment/' . $request_data['id']  , [
             'body' => $request_data['body'],
             'status' => $request_data['status'],
             'author_id' => $request_data['author_id'],
@@ -81,7 +81,7 @@ class commentController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $topic_id, $topic_slug, $id)
     {
-        $response = Http::timeout(3)->delete(getenv('API_SITE') . '/comments/' . $id . '?apikey=' . getenv('API_KEY'), []);
+        $response = Http::delete(getenv('API_SITE') . '/comments/' . $id , []);
 
         if ($response->status() <> 200) {
             dd($response);

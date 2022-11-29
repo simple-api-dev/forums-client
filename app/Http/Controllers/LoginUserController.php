@@ -28,7 +28,7 @@ class LoginUserController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::timeout(3)->post(getenv('AUTH_SITE') . '/login/' . '?apikey=' . getenv('AUTH_APIKEY'), [
+        $response = Http::post(getenv('AUTH_SITE') . '/login/', [
             'integration_id' => getenv('INTEGRATION_ID'),
             'email' => $request_data['email'],
             'password' => $request_data['password'],
@@ -51,9 +51,18 @@ class LoginUserController extends Controller
 
     public function destroy(Request $request)
     {
-        Http::timeout(3)->post(getenv('AUTH_SITE') . '/logout/' . '?apikey=' . getenv('AUTH_APIKEY'), [
+//        $apirequest= Http::withHeaders(['Authorization' => 'Bearer ' . 'SDFSD#$%#$',]);
+//        $apirequest->timeout(3);
+        $this->apirequest->post(getenv('AUTH_SITE') . '/logout/', [
             'token' => $request->session()->get('key'),
         ]);
+
+
+        //Http::timeout(3)->withHeaders(['Authorization' => 'Bearer ' . 'SDFSD#$%#$',])->post(getenv('AUTH_SITE') . '/logout/', [
+        //    'token' => $request->session()->get('key'),
+        //]);
+
+
 
         $request->session()->flush();
         $request->session()->regenerate();

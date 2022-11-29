@@ -14,7 +14,7 @@ class topicShowController extends Controller
      */
     public function show($forum_id, $forum_slug, $topic_id, $topic_slug)
     {
-        $response = Http::timeout(3)->get(getenv('API_SITE') . '/topics/' . $topic_slug . '?apikey=' . getenv('API_KEY'));
+        $response = Http::get(getenv('API_SITE') . '/topics/' . $topic_slug . '?apikey=' . getenv('API_KEY'));
         if ($response->status() <> 200) {
             dd($response);
         }
