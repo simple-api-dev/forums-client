@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 
 
@@ -26,8 +25,7 @@ class commentController extends Controller
         }
 
         $request_data = $request->all();
-
-        $response = Http::post(getenv('API_SITE') . '/comments/type/topic/' . $request_data['topic_id']  , [
+        $response = $this->apirequest->post(getenv('API_SITE') . '/comments/type/topic/' . $request_data['topic_id']  , [
             'body' => $request_data['body'],
             'status' => $request_data['status'],
             'author_id' => $request_data['author_id'],
@@ -61,7 +59,7 @@ class commentController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::post(getenv('API_SITE') . '/comments/type/comment/' . $request_data['id']  , [
+        $response = $this->apirequest->post(getenv('API_SITE') . '/comments/type/comment/' . $request_data['id']  , [
             'body' => $request_data['body'],
             'status' => $request_data['status'],
             'author_id' => $request_data['author_id'],
@@ -81,16 +79,11 @@ class commentController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $topic_id, $topic_slug, $id)
     {
-        $response = Http::delete(getenv('API_SITE') . '/comments/' . $id , []);
+        $response = $this->apirequest->delete(getenv('API_SITE') . '/comments/' . $id , []);
 
         if ($response->status() <> 200) {
             dd($response);
         }
         return redirect(getenv('FORUM_CLIENT') . '/topicShow/' . $forum_id . '/' . $forum_slug . '/' . $topic_id . '/' . $topic_slug);
-    }
-    /**
-     */
-    public function __construct()
-    {
     }
 }

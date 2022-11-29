@@ -20,11 +20,11 @@ class Controller extends BaseController
         if(Session::has('token')) {
             $this->apirequest = Http::withHeaders([
                 'Authorization' => 'Bearer ' . Session::get('token'),
-                'apikey' => getenv('AUTH_APIKEY')
+                'APIKEY' => getenv('API_KEY')
             ]);
         } else {
-            $this->apirequest= Http::withHeaders([
-                'apikey' => getenv('AUTH_APIKEY')
+            $this->apirequest = Http::withHeaders([
+                'APIKEY' => getenv('API_KEY')
             ]);
         }
         $this->apirequest->timeout(3);

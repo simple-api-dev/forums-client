@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Http;
+
 
 class ReportController extends Controller
 {
@@ -13,7 +13,7 @@ class ReportController extends Controller
      */
     public function report($forum_id, $forum_slug, $id)
     {
-        $response = Http::post(getenv('API_SITE') . '/reports/type/topic/' . $id , [
+        $response = $this->apirequest->post(getenv('API_SITE') . '/reports/type/topic/' . $id , [
             'author_id' => "DAN",
             'type' => "Offensive",
         ]);
@@ -28,7 +28,7 @@ class ReportController extends Controller
      */
     public function approveReport($forum_id, $forum_slug, $id)
     {
-        $response = Http::put(getenv('API_SITE') . '/reports/' . $id , [
+        $response = $this->apirequest->put(getenv('API_SITE') . '/reports/' . $id , [
             'status' => "Approved",
         ]);
         if ($response->status() <> 200) {
@@ -42,18 +42,12 @@ class ReportController extends Controller
      */
     public function declineReport($forum_id, $forum_slug, $id)
     {
-        $response = Http::put(getenv('API_SITE') . '/reports/' . $id , [
+        $response = $this->apirequest->put(getenv('API_SITE') . '/reports/' . $id , [
             'status' => "Declined",
         ]);
         if ($response->status() <> 200) {
             dd($response);
         }
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
-    }
-
-    /**
-     */
-    public function __construct()
-    {
     }
 }

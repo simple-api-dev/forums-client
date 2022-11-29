@@ -27,7 +27,7 @@
                     <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="">Forgot your password?</a>
                 @endif
 
-                <button class="ml-3">Log in</button>
+                <button class="btn">Log in</button>
             </div>
         </form>
     </div>

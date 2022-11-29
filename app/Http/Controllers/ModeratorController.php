@@ -3,9 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
-use Symfony\Component\HttpClient\HttpClient;
+
 
 class ModeratorController extends Controller
 {
@@ -38,7 +37,7 @@ class ModeratorController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/moderators?apikey=' . getenv('API_KEY'), [
+        $response = $this->apirequest->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/moderators', [
             'author_id' => $request_data['author_id'],
         ]);
 
@@ -60,17 +59,11 @@ class ModeratorController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $id)
     {
-        $response = Http::delete(getenv('API_SITE') . '/moderators/' . $id , []);
+        $response = $this->apirequest->delete(getenv('API_SITE') . '/moderators/' . $id , []);
 
         if ($response->status() <> 200) {
             dd($response);
         }
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
-    }
-
-    /**
-     */
-    public function __construct()
-    {
     }
 }

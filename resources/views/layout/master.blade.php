@@ -35,11 +35,12 @@
     </div>
     <div class="">
         @if(Session::has('author_id'))
+            Token:{{Session::get('token')}}
             Welcome:{{Session::get('author_id')}}
             <a href="{{getenv('FORUM_CLIENT')}}/destroyLogin">Logout</a>
         @else
-            <a class="rounded-full w-200 border-solid border-2 border-b-blue-900 text-white bg-blue-800 p-2" href="{{getenv('FORUM_CLIENT')}}/login">Login</a>
-            <a href="{{getenv('FORUM_CLIENT')}}/register">Register</a>
+            <a class="btn" href="{{getenv('FORUM_CLIENT')}}/login">Login</a>
+            <a class="btn" href="{{getenv('FORUM_CLIENT')}}/register">Register</a>
         @endif
     </div>
 </div>

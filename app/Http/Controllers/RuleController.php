@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 
 class RuleController extends Controller
@@ -39,7 +38,7 @@ class RuleController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/rules?apikey=' . getenv('API_KEY'), [
+        $response = $this->apirequest->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/rules', [
                 'author_id' => $request_data['author_id'],
                 'body' => $request_data['body'],
                 'status' => $request_data['status'],
@@ -61,7 +60,7 @@ class RuleController extends Controller
      */
     public function edit($forum_id, $forum_slug, $id)
     {
-        $response = Http::get(getenv('API_SITE') . '/rules/' . $id . '?apikey=' . getenv('API_KEY'));
+        $response = $this->apirequest->get(getenv('API_SITE') . '/rules/' . $id );
         if ($response->status() <> 200) {
             dd($response);
         }
@@ -92,7 +91,7 @@ class RuleController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::put(getenv('API_SITE') . '/rules/' . $request_data['id'] , [
+        $response = $this->apirequest->put(getenv('API_SITE') . '/rules/' . $request_data['id'] , [
             'body' => $request_data['body'],
             'status' => $request_data['status'],
             'author_id' => $request_data['author_id'],
@@ -113,7 +112,7 @@ class RuleController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $id)
     {
-        $response = Http::delete(getenv('API_SITE') . '/rules/' . $id , []);
+        $response = $this->apirequest->delete(getenv('API_SITE') . '/rules/' . $id , []);
         if ($response->status() <> 200) {
             dd($response);
         }
@@ -126,17 +125,11 @@ class RuleController extends Controller
      */
     public function destroyAll($forum_id, $forum_slug)
     {
-        $response = Http::delete(getenv('API_SITE') . '/forums/' . $forum_id . '/rules?apikey=' . getenv('API_KEY'), []);
+        $response = $this->apirequest->delete(getenv('API_SITE') . '/forums/' . $forum_id . '/rules?apikey=' . getenv('API_KEY'), []);
         if ($response->status() <> 200) {
             dd($response);
         }
 
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
-    }
-
-    /**
-     */
-    public function __construct()
-    {
     }
 }

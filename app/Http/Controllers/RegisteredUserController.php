@@ -28,7 +28,7 @@ class RegisteredUserController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::post(getenv('AUTH_SITE') . '/register/', [
+        $response = HTTP::post(getenv('AUTH_SITE') . '/register/?apikey=' . getenv('AUTH_APIKEY'), [
             'integration_id' => getenv('INTEGRATION_ID'),
             'name' => $request_data['name'],
             'email' => $request_data['email'],

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 
 class ForumTagsController extends Controller
@@ -31,7 +30,7 @@ class ForumTagsController extends Controller
         }
 
         $request_data = $request->all();
-        $response = Http::post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/tags?apikey=' . getenv('API_KEY'), [
+        $response = $this->apirequest->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/tags', [
                 'name' => $request_data['name'],
         ]);
 
@@ -52,17 +51,11 @@ class ForumTagsController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $id)
     {
-        $response = Http::delete(getenv('API_SITE') . '/tags/' . $id , []);
+        $response = $this->apirequest->delete(getenv('API_SITE') . '/tags/' . $id , []);
 
         if ($response->status() <> 200) {
             dd($response);
         }
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
-    }
-
-    /**
-     */
-    public function __construct()
-    {
     }
 }
