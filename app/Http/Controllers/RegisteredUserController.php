@@ -43,7 +43,6 @@ class RegisteredUserController extends Controller
 
         $response = json_decode($response);
         $message = $response->message;
-        $user    = $arr = (array)$response->user;
-        return view('auth.registerSuccessful', compact('message','user'));
+        return view('auth.registerSuccessful', compact('message','message'));
     }
 }
