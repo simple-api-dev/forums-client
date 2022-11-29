@@ -34,8 +34,8 @@
         <input class="border-black border-solid border-2 rounded-lg" type="text" id="search" name="search" placeholder="Search Forum">
     </div>
     <div class="">
-        @if(Session::has('username'))
-            Welcome:{{Session::get('username')}}
+        @if(Session::has('author_id'))
+            Welcome:{{Session::get('author_id')}}
             <a href="{{getenv('FORUM_CLIENT')}}/destroyLogin">Logout</a>
         @else
             <a class="rounded-full w-200 border-solid border-2 border-b-blue-900 text-white bg-blue-800 p-2" href="{{getenv('FORUM_CLIENT')}}/login">Login</a>

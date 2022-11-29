@@ -6,6 +6,8 @@
         <form class="bg-slate-100 p-5" method="POST" action="{{getenv('FORUM_CLIENT')}}/storeForum">
             @csrf
 
+            <input type="hidden" name="author_id" id="author_id" value="{{Session::get('author_id')}}">
+
             <div class="p-2">
                 <label class="font-extrabold" for="title">Title</label>
                 <div>
@@ -17,13 +19,6 @@
                 <label class="font-extrabold" for="body">Body</label>
                 <div>
                     <textarea name="body" id="body" rows="2" cols="40">{{old('body')}}</textarea>
-                </div>
-            </div>
-
-            <div class="p-2">
-                <label class="font-extrabold" for="author_id">Author Id</label>
-                <div>
-                    <input type="text" name="author_id" id="author_id" size="38" value="{{old('author_id')}}">
                 </div>
             </div>
 
@@ -40,8 +35,6 @@
             </div>
 
             <div class="p-5 text-right">
-                <a class="bg-blue-800 rounded-lg p-1 text-white hover:bg-blue-600"
-                   href="{{getenv('FORUM_CLIENT')}}">Cancel</a>
                 <button class="btn" type="submit">Submit</button>
             </div>
         </form>

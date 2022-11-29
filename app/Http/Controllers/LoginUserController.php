@@ -43,8 +43,7 @@ class LoginUserController extends Controller
         $response = json_decode($response);
         $request->session()->regenerate();
         $request->session()->put('token',$response->token);
-        $request->session()->put('username',$response->username);
-        $request->session()->put('userid',$response->username);
+        $request->session()->put('author_id',$response->username);
 
         return redirect(getenv('FORUM_CLIENT'));
     }

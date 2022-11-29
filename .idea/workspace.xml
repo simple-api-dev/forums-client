@@ -4,14 +4,13 @@
     <list default="true" id="8eca0e10-b956-4fe3-9773-a90507dce11d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/Http/Controllers/LoginUserController.php" beforeDir="false" afterPath="$PROJECT_DIR$/app/Http/Controllers/LoginUserController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/Http/Controllers/RegisteredUserController.php" beforeDir="false" afterPath="$PROJECT_DIR$/app/Http/Controllers/RegisteredUserController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/database/migrations/2014_10_12_000000_create_users_table.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/database/migrations/2014_10_12_100000_create_password_resets_table.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/database/migrations/2019_08_19_000000_create_failed_jobs_table.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/database/migrations/2019_12_14_000001_create_personal_access_tokens_table.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/resources/views/auth/registerSuccessful.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/auth/registerSuccessful.blade.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/resources/views/createForum.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/createForum.blade.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/resources/views/createModerator.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/createModerator.blade.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/resources/views/createTopic.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/createTopic.blade.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/resources/views/editForum.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/editForum.blade.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/resources/views/forum.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/forum.blade.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/resources/views/forums.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/forums.blade.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/resources/views/layout/master.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/layout/master.blade.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/web.php" beforeDir="false" afterPath="$PROJECT_DIR$/routes/web.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -211,7 +210,7 @@
       <workItem from="1669647369125" duration="9000" />
       <workItem from="1669650089151" duration="3462000" />
       <workItem from="1669653607208" duration="22925000" />
-      <workItem from="1669732915752" duration="84000" />
+      <workItem from="1669732915752" duration="6928000" />
     </task>
     <servers />
   </component>

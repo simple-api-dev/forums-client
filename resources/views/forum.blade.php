@@ -21,9 +21,6 @@
                 {{$forum_content->body}}
                     </span>
                 </div>
-                <div class="flex">
-                    Login
-                </div>
             </header>
 
             <div class="flex max-h-[90%]">
@@ -77,16 +74,22 @@
                             @foreach($moderators_content as $item)
                                 <div>
                                     {{$item->author_id}}
-                                    <a href="{{getenv('FORUM_CLIENT')}}/deleteModerator/{{$forum_content->id}}/{{$forum_content->slug}}/{{$item->id}}?apikey={{getenv('API_KEY')}}"><i
+                                    @if(Session::has('author_id'))
+                                        @if(Session::get('author_id') == $forum_content->author_id)
+                                         <a href="{{getenv('FORUM_CLIENT')}}/deleteModerator/{{$forum_content->id}}/{{$forum_content->slug}}/{{$item->id}}?apikey={{getenv('API_KEY')}}"><i
                                             class="fa fa-trash text-gray-400 hover:text-black"></i></a>
+                                        @endif
+                                    @endif
                                 </div>
                             @endforeach
                             <div class="text-right m-2">
+                                @if(Session::has('author_id'))
+                                    @if(Session::get('author_id') == $forum_content->author_id)
                                 <a href="{{getenv('FORUM_CLIENT')}}/createModerator/{{$forum_content->id}}/{{$forum_content->slug}}?apikey={{getenv('API_KEY')}}">
-                                    <button class="btn">Create
-                                        Moderator
-                                    </button>
+                                    <button class="btn">Create Moderator</button>
                                 </a>
+                                    @endif
+                                    @endif
                             </div>
                         </div>
 
@@ -95,12 +98,19 @@
                             @foreach($rules_content as $item)
                                 <div class="border-2 border-solid border-slate-400 m-2 p-2">
                                     {{$item->body}} [{{$item->status}}]
+                                    @if(Session::has('author_id'))
+                                        @if(Session::get('author_id') == $forum_content->author_id)
                                     <a href="{{getenv('FORUM_CLIENT')}}/editRule/{{$forum_content->id}}/{{$forum_content->slug}}/{{$item->id}}?apikey={{getenv('API_KEY')}}"><i
                                             class="fa fa-pen text-gray-400 hover:text-black"></i></a>
                                     <a href="{{getenv('FORUM_CLIENT')}}/deleteRule/{{$forum_content->id}}/{{$forum_content->slug}}/{{$item->id}}?apikey={{getenv('API_KEY')}}"><i
                                             class="fa fa-trash text-gray-400 hover:text-black"></i></a>
+                                        @endif
+                                        @endif
                                 </div>
                             @endforeach
+
+                                @if(Session::has('author_id'))
+                                    @if(Session::get('author_id') == $forum_content->author_id)
 
                             <div class="text-right m-2">
                                 <a href="{{getenv('FORUM_CLIENT')}}/deleteAllRule/{{$forum_content->id}}/{{$forum_content->slug}}?apikey={{getenv('API_KEY')}}">
@@ -113,25 +123,34 @@
                                     </button>
                                 </a>
                             </div>
+                                    @endif
+                                    @endif
                         </div>
 
                         <div class="bg-blue-900 text-white text-center font-bold">Forum Tags</div>
                         <div class="m-2 p-2">
                             @foreach($tags_content as $tag)
-                                <div>
                                     <button
                                         class="bg-gray-400 rounded-lg text-white p-2 m-1 border-1 border-black border-solid">{{$tag->name}}</button>
-                                    <a href="{{getenv('FORUM_CLIENT')}}/deleteForumTag/{{$forum_content->id}}/{{$forum_content->slug}}/{{$tag->id}}?apikey={{getenv('API_KEY')}}"><i
+                                    @if(Session::has('author_id'))
+                                        @if(Session::get('author_id') == $forum_content->author_id)
+                                        <a href="{{getenv('FORUM_CLIENT')}}/deleteForumTag/{{$forum_content->id}}/{{$forum_content->slug}}/{{$tag->id}}?apikey={{getenv('API_KEY')}}"><i
                                             class="fa fa-trash text-gray-400 hover:text-black"></i></a>
-
-                                </div>
+                                        @endif
+                                        @endif
                             @endforeach
-                            <div class="text-right m-2">
+
+                                @if(Session::has('author_id'))
+                                    @if(Session::get('author_id') == $forum_content->author_id)
+
+                                    <div class="text-right m-2">
                                 <a href="{{getenv('FORUM_CLIENT')}}/createForumTag/{{$forum_content->id}}/{{$forum_content->slug}}">
                                 <button class="btn">Create Tag
                                 </button>
                                 </a>
                             </div>
+                                    @endif
+                                    @endif
                         </div>
 
                     </div>

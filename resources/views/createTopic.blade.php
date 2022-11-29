@@ -51,7 +51,7 @@
             <div class="p-2">
                 <label class="font-extrabold" for="author_id">Author Id</label>
                 <div>
-                    <input type="text" name="author_id" id="author_id">
+                    <input type="text" name="author_id" id="author_id" value="{{Session::get('author_id')}}">
                 </div>
             </div>
 

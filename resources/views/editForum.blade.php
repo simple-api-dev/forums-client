@@ -20,23 +20,9 @@
         <input type="hidden" name="slug" id="slug" value="{{$forum_content->slug}}">
 
         <div class="p-2">
-            <label class="font-extrabold">Title</label>
-            <div>
-                <span class="bg-slate-100">{{$forum_content->title}}</span>
-            </div>
-        </div>
-
-        <div class="p-2">
             <label class="font-extrabold" for="body">Body</label>
             <div>
                 <textarea name="body" id="body" rows="2" cols="40">{{$forum_content->body}}</textarea>
-            </div>
-        </div>
-
-        <div class="p-2">
-            <label class="font-extrabold">Author Id</label>
-            <div>
-                <span class="bg-slate-100">{{$forum_content->author_id}}</span>
             </div>
         </div>
 
@@ -53,8 +39,6 @@
         </div>
 
         <div class="p-5 text-right">
-            <a class="bg-blue-800 rounded-lg p-1 text-white hover:bg-blue-600"
-               href="{{getenv('FORUM_CLIENT')}}">Cancel</a>
             <button class="btn" type="submit">Submit</button>
         </div>
     </form>
