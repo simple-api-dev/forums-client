@@ -34,8 +34,13 @@
         <input class="border-black border-solid border-2 rounded-lg" type="text" id="search" name="search" placeholder="Search Forum">
     </div>
     <div class="">
-        <a class="rounded-full w-200 border-solid border-2 border-b-blue-900 text-white bg-blue-800 p-2" href="{{getenv('FORUM_CLIENT')}}/login">Login</a>
-        <a href="{{getenv('FORUM_CLIENT')}}/register">Register</a>
+        @if(Session::has('username'))
+            Welcome:{{Session::get('username')}}
+            <a href="{{getenv('FORUM_CLIENT')}}/destroyLogin">Logout</a>
+        @else
+            <a class="rounded-full w-200 border-solid border-2 border-b-blue-900 text-white bg-blue-800 p-2" href="{{getenv('FORUM_CLIENT')}}/login">Login</a>
+            <a href="{{getenv('FORUM_CLIENT')}}/register">Register</a>
+        @endif
     </div>
 </div>
 @yield('content')

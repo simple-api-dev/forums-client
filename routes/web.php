@@ -72,8 +72,8 @@ Route::post('/storeCommentCommentPost', [commentController::class, 'storeComment
 Route::get('/register', [RegisteredUserController::class, 'create']);
 Route::post('/storeRegister', [RegisteredUserController::class, 'store']);
 
-Route::get('/login', [LoginUserController::class, 'create']);
 Route::post('/storeLogin', [LoginUserController::class, 'store']);
-Route::delete('/destroylogin', [LoginUserController::class, 'destroy']);
+Route::get('/destroyLogin', [LoginUserController::class, 'destroy']);
+Route::get('/login', [LoginUserController::class, 'create']);
 
 

@@ -29,19 +29,21 @@ class RegisteredUserController extends Controller
 
         $request_data = $request->all();
         $response = Http::timeout(3)->post(getenv('AUTH_SITE') . '/register/' . '?apikey=' . getenv('AUTH_APIKEY'), [
-            'integration_id' => '205',
+            'integration_id' => getenv('INTEGRATION_ID'),
             'name' => $request_data['name'],
             'email' => $request_data['email'],
             'password' => $request_data['password'],
         ]);
 
         if (!$response->successful()) {
-            $msg = (string) $response->getBody();
-            $validate->getMessageBag()->add($response->getStatusCode(), $msg);
+            $response = json_decode($response);
+            $validate->getMessageBag()->add('message', $response->message);
             return back()->withErrors($validate->errors())->withInput();
         }
 
-        $message = $response->getBody();
-        return view('auth.registerSuccessful', compact('message'));
+        $response = json_decode($response);
+        $message = $response->message;
+        $user    = $arr = (array)$response->user;
+        return view('auth.registerSuccessful', compact('message','user'));
     }
 }

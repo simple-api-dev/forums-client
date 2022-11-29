@@ -29,7 +29,7 @@ class LoginUserController extends Controller
 
         $request_data = $request->all();
         $response = Http::timeout(3)->post(getenv('AUTH_SITE') . '/login/' . '?apikey=' . getenv('AUTH_APIKEY'), [
-            'integration_id' => '205',
+            'integration_id' => getenv('INTEGRATION_ID'),
             'email' => $request_data['email'],
             'password' => $request_data['password'],
         ]);
@@ -43,6 +43,8 @@ class LoginUserController extends Controller
         $response = json_decode($response);
         $request->session()->regenerate();
         $request->session()->put('token',$response->token);
+        $request->session()->put('username',$response->username);
+        $request->session()->put('userid',$response->username);
 
         return redirect(getenv('FORUM_CLIENT'));
     }
@@ -50,10 +52,12 @@ class LoginUserController extends Controller
 
     public function destroy(Request $request)
     {
-        //Auth::guard('web')->logout();
-        //$request->session()->invalidate();
-        //$request->session()->regenerateToken();
+        Http::timeout(3)->post(getenv('AUTH_SITE') . '/logout/' . '?apikey=' . getenv('AUTH_APIKEY'), [
+            'token' => $request->session()->get('key'),
+        ]);
+
         $request->session()->flush();
+        $request->session()->regenerate();
         return redirect(getenv('FORUM_CLIENT'));
     }
 }
