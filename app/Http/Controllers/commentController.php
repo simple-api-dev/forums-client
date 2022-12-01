@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Validator;
 
 class commentController extends Controller
 {
-
     /**
      * Call API to store a newly created forum
      */
@@ -25,7 +24,7 @@ class commentController extends Controller
         }
 
         $request_data = $request->all();
-        $response = $this->apirequest->post(getenv('API_SITE') . '/comments/type/topic/' . $request_data['topic_id']  , [
+        $response = $this->apirequest->post(getenv('API_SITE') . '/comments/type/topic/' . $request_data['topic_id'], [
             'body' => $request_data['body'],
             'status' => $request_data['status'],
             'author_id' => $request_data['author_id'],
@@ -38,7 +37,6 @@ class commentController extends Controller
             }
             return back()->withErrors($validate->errors())->withInput();
         }
-
 
         return redirect(getenv('FORUM_CLIENT') . '/topicShow/' . $request_data['forum_id'] . '/' . $request_data['forum_slug'] . '/' . $request_data['topic_id'] . '/' . $request_data['topic_slug']);
     }
@@ -59,7 +57,7 @@ class commentController extends Controller
         }
 
         $request_data = $request->all();
-        $response = $this->apirequest->post(getenv('API_SITE') . '/comments/type/comment/' . $request_data['id']  , [
+        $response = $this->apirequest->post(getenv('API_SITE') . '/comments/type/comment/' . $request_data['id'], [
             'body' => $request_data['body'],
             'status' => $request_data['status'],
             'author_id' => $request_data['author_id'],
@@ -67,7 +65,7 @@ class commentController extends Controller
 
         if (!$response->successful()) {
             $results = json_decode($response->getBody(), true);
-            $validate->getMessageBag()->add('HTTP-FAIL',$results);
+            $validate->getMessageBag()->add('HTTP-FAIL', $results);
             return back()->withErrors($validate->errors())->withInput();
         }
 
@@ -79,11 +77,7 @@ class commentController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $topic_id, $topic_slug, $id)
     {
-        $response = $this->apirequest->delete(getenv('API_SITE') . '/comments/' . $id , []);
-
-        if ($response->status() <> 200) {
-            dd($response);
-        }
+        $response = $this->apirequest->delete(getenv('API_SITE') . '/comments/' . $id, []);
         return redirect(getenv('FORUM_CLIENT') . '/topicShow/' . $forum_id . '/' . $forum_slug . '/' . $topic_id . '/' . $topic_slug);
     }
 }

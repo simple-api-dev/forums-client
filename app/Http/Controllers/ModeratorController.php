@@ -53,17 +53,12 @@ class ModeratorController extends Controller
     }
 
 
-
     /**
      * Call API to remove the specified moderator
      */
     public function destroy($forum_id, $forum_slug, $id)
     {
-        $response = $this->apirequest->delete(getenv('API_SITE') . '/moderators/' . $id , []);
-
-        if ($response->status() <> 200) {
-            dd($response);
-        }
+        $response = $this->apirequest->delete(getenv('API_SITE') . '/moderators/' . $id, []);
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 }

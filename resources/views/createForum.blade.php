@@ -6,8 +6,6 @@
         <form class="bg-slate-100 p-5" method="POST" action="{{getenv('FORUM_CLIENT')}}/storeForum">
             @csrf
 
-            <input type="hidden" name="author_id" id="author_id" value="{{Session::get('author_id')}}">
-
             <div class="p-2">
                 <label class="font-extrabold" for="title">Title</label>
                 <div>

@@ -33,7 +33,7 @@ class RegisteredUserController extends Controller
             'integration_id' => getenv('INTEGRATION_ID'),
             'name' => $request_data['name'],
             'email' => $request_data['email'],
-            'password' => Hash::make($request_data['password']),
+            'password' => $request_data['password'],
         ]);
 
         if (!$response->successful()) {
@@ -44,6 +44,6 @@ class RegisteredUserController extends Controller
 
         $response = json_decode($response);
         $message = $response->message;
-        return view('auth.registerSuccessful', compact('message','message'));
+        return view('auth.registerSuccessful', compact('message', 'message'));
     }
 }

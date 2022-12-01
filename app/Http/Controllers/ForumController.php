@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 
 class ForumController extends Controller
@@ -13,34 +14,19 @@ class ForumController extends Controller
     public function show($id, $slug)
     {
         $response = $this->apirequest->get(getenv('API_SITE') . '/forums/' . $slug);
-        if ($response->status() <> 200) {
-            dd($response);
-        }
         $forum_content = json_decode($response);
 
         $response = $this->apirequest->get(getenv('API_SITE') . '/forums/' . $forum_content->id . '/moderators');
-        if ($response->status() <> 200) {
-            dd($response);
-        }
         $moderators_content = json_decode($response);
 
 
         $response = $this->apirequest->get(getenv('API_SITE') . '/forums/' . $forum_content->id . '/rules');
-        if ($response->status() <> 200) {
-            dd($response);
-        }
         $rules_content = json_decode($response);
 
         $response = $this->apirequest->get(getenv('API_SITE') . '/forums/' . $slug . '/topics');
-        if ($response->status() <> 200) {
-            dd($response);
-        }
         $topics_content = json_decode($response);
 
         $response = $this->apirequest->get(getenv('API_SITE') . '/forums/' . $forum_content->id . '/tags');
-        if ($response->status() <> 200) {
-            dd($response);
-        }
         $tags_content = json_decode($response);
 
         return view('forum', compact('forum_content', 'moderators_content', 'rules_content', 'topics_content', 'tags_content'));
@@ -63,7 +49,6 @@ class ForumController extends Controller
             'title' => 'required',
             'body' => 'required',
             'status' => 'required',
-            'author_id' => 'required',
         ]);
 
         if ($validate->fails()) {
@@ -75,7 +60,7 @@ class ForumController extends Controller
             'title' => $request_data['title'],
             'body' => $request_data['body'],
             'status' => $request_data['status'],
-            'author_id' => $request_data['author_id'],
+            'author_id' => Session::get('author_id'),
         ]);
 
         if ($response->status() <> 200) {
@@ -93,10 +78,7 @@ class ForumController extends Controller
      */
     public function edit($id, $slug)
     {
-        $response = $this->apirequest->get(getenv('API_SITE') . '/forums/' . $slug );
-        if ($response->status() <> 200) {
-            dd($response);
-        }
+        $response = $this->apirequest->get(getenv('API_SITE') . '/forums/' . $slug);
         $forum_content = json_decode($response);
 
         $statuses = array(
@@ -124,7 +106,7 @@ class ForumController extends Controller
         }
 
         $request_data = $request->all();
-        $response = $this->apirequest->put(getenv('API_SITE') . '/forums/' . $request_data['id'] , [
+        $response = $this->apirequest->put(getenv('API_SITE') . '/forums/' . $request_data['id'], [
             'body' => $request_data['body'],
             'status' => $request_data['status'],
         ]);
@@ -143,13 +125,7 @@ class ForumController extends Controller
      */
     public function destroy($id)
     {
-        $response = $this->apirequest->delete(getenv('API_SITE') . '/forums/' . $id , []);
-        if ($response->status() <> 200) {
-            dd($response);
-        }
+        $response = $this->apirequest->delete(getenv('API_SITE') . '/forums/' . $id, []);
         return redirect('/');
     }
-
-    /**
-     */
 }

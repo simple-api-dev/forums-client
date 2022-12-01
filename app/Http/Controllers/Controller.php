@@ -17,7 +17,7 @@ class Controller extends BaseController
 
     function __construct()
     {
-        if(Session::has('token')) {
+        if (Session::has('token')) {
             $this->apirequest = Http::withHeaders([
                 'Authorization' => 'Bearer ' . Session::get('token'),
                 'APIKEY' => getenv('API_KEY')

@@ -31,7 +31,7 @@ class ForumTagsController extends Controller
 
         $request_data = $request->all();
         $response = $this->apirequest->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/tags', [
-                'name' => $request_data['name'],
+            'name' => $request_data['name'],
         ]);
 
         if ($response->status() <> 200) {
@@ -51,11 +51,7 @@ class ForumTagsController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $id)
     {
-        $response = $this->apirequest->delete(getenv('API_SITE') . '/tags/' . $id , []);
-
-        if ($response->status() <> 200) {
-            dd($response);
-        }
+        $response = $this->apirequest->delete(getenv('API_SITE') . '/tags/' . $id, []);
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
 }

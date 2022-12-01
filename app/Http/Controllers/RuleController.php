@@ -39,9 +39,9 @@ class RuleController extends Controller
 
         $request_data = $request->all();
         $response = $this->apirequest->post(getenv('API_SITE') . '/forums/' . $request_data['forum_id'] . '/rules', [
-                'author_id' => $request_data['author_id'],
-                'body' => $request_data['body'],
-                'status' => $request_data['status'],
+            'author_id' => $request_data['author_id'],
+            'body' => $request_data['body'],
+            'status' => $request_data['status'],
         ]);
 
         if ($response->status() <> 200) {
@@ -60,10 +60,7 @@ class RuleController extends Controller
      */
     public function edit($forum_id, $forum_slug, $id)
     {
-        $response = $this->apirequest->get(getenv('API_SITE') . '/rules/' . $id );
-        if ($response->status() <> 200) {
-            dd($response);
-        }
+        $response = $this->apirequest->get(getenv('API_SITE') . '/rules/' . $id);
         $rule_content = json_decode($response);
 
         $statuses = array(
@@ -91,7 +88,7 @@ class RuleController extends Controller
         }
 
         $request_data = $request->all();
-        $response = $this->apirequest->put(getenv('API_SITE') . '/rules/' . $request_data['id'] , [
+        $response = $this->apirequest->put(getenv('API_SITE') . '/rules/' . $request_data['id'], [
             'body' => $request_data['body'],
             'status' => $request_data['status'],
             'author_id' => $request_data['author_id'],
@@ -112,10 +109,7 @@ class RuleController extends Controller
      */
     public function destroy($forum_id, $forum_slug, $id)
     {
-        $response = $this->apirequest->delete(getenv('API_SITE') . '/rules/' . $id , []);
-        if ($response->status() <> 200) {
-            dd($response);
-        }
+        $response = $this->apirequest->delete(getenv('API_SITE') . '/rules/' . $id, []);
 
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
@@ -126,9 +120,6 @@ class RuleController extends Controller
     public function destroyAll($forum_id, $forum_slug)
     {
         $response = $this->apirequest->delete(getenv('API_SITE') . '/forums/' . $forum_id . '/rules?apikey=' . getenv('API_KEY'), []);
-        if ($response->status() <> 200) {
-            dd($response);
-        }
 
         return redirect(getenv('FORUM_CLIENT') . '/forum/' . $forum_id . '/' . $forum_slug);
     }
