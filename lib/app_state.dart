@@ -46,18 +46,26 @@ class AppState extends ChangeNotifier {
   ForumsApi get api => _api!;
 
   void _useKey(String key, {required bool own}) {
-    _api = key.isEmpty ? null : ForumsApi(apiKey: key, client: _client);
+    _api = key.isEmpty ? null : ForumsApi(apiKey: key, client: _client, onSessionExpired: _sessionExpired);
     _usingOwnKey = own;
     userName = null;
     userId = null;
     keyVersion++;
   }
 
+  /// The API said the login token no longer works: forget the user so the
+  /// app bar offers Log in again.
+  void _sessionExpired() {
+    userName = null;
+    userId = null;
+    notifyListeners();
+  }
+
   /// Checks [key] with one real call (GET /api/forums), then remembers it in
   /// localStorage and uses it instead of the build key.
   /// Throws [ApiException] if the API rejects it.
   Future<void> useOwnKey(String key) async {
-    await ForumsApi(apiKey: key, client: _client).listForums();
+    await ForumsApi(apiKey: key, client: _client).listForums(); // GET /api/forums, also used as the key check
     store.write(key);
     _useKey(key, own: true);
     notifyListeners();

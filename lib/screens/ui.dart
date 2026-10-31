@@ -4,29 +4,27 @@ import '../app_state.dart';
 import '../forums_api.dart';
 import 'auth_screen.dart';
 
-/// Turns any error into a sentence the user can read. The API's own message
-/// (when it sent one) is appended because it names the exact problem.
+/// Shown under the register form while the app uses the shared demo key.
+const demoNotice = 'Demo accounts are shared and public. Do not use a real password or any private details.';
+
+/// Shown instead of the API's message when the shared demo key has no room for another user.
+const demoFullMessage = 'The demo is full: its key cannot take more accounts. Use your own free key under Settings to keep going.';
+
+/// Turns any error into a sentence the user can read. For a 401 on login, 403,
+/// 409 and 422 the API's own message is the best explanation, so it is shown as is.
 String describeError(Object e) {
-  if (e is! ApiException) return 'Something went wrong: $e';
-  final detail = e.message;
+  if (e is! ApiException) return 'Something went wrong. Please try again.';
   switch (e.statusCode) {
-    case 0:
-      return detail;
     case 401:
-      return 'The API did not accept the key or your login (401). '
-          'Check the key in Settings, or log in again. $detail';
-    case 403:
-      return 'You are not allowed to do that (403). $detail';
+      if (e.keyRejected) return 'The API key was not accepted. Check it under Settings.';
+      if (e.sessionEnded) return 'Your session has ended. Please log in again.';
+      return e.message;
     case 404:
-      return 'Not found (404). $detail';
-    case 409:
-      return 'That conflicts with something that already exists, or this key uses an external auth service (409). $detail';
-    case 422:
-      return 'The API rejected the input (422). $detail';
+      return 'Not found. It may already have been deleted.';
     case 429:
-      return 'Too many requests (429). Wait a few seconds and try again. $detail';
+      return 'Too many requests. Wait a few seconds and try again.';
     default:
-      return detail;
+      return e.message;
   }
 }
 
@@ -34,6 +32,12 @@ void showSnack(BuildContext context, String text) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(text)));
+}
+
+/// Shows [e] in a snackbar. When the login has just ended, the login screen opens too.
+Future<void> showError(BuildContext context, AppState state, Object e) async {
+  showSnack(context, describeError(e));
+  if (e is ApiException && e.sessionEnded && context.mounted) await ensureLoggedIn(context, state);
 }
 
 /// Makes sure someone is logged in, opening the log in screen if not.
@@ -123,16 +127,10 @@ class Centered extends StatelessWidget {
 List<Widget> accountActions(BuildContext context, AppState state, {required VoidCallback onSettings}) {
   return [
     if (state.loggedIn) ...[
-      Center(child: Text(state.userName ?? 'you')),
-      TextButton(
-        onPressed: () async {
-          await state.logout();
-          if (context.mounted) showSnack(context, 'Logged out.');
-        },
-        child: const Text('Log out'),
-      ),
+      Center(child: Text('Hi, ${state.userName ?? 'you'}')),
+      TextButton(onPressed: state.logout, child: const Text('Log out')),
     ] else
-      TextButton(onPressed: () => ensureLoggedIn(context, state), child: const Text('Log in')),
+      TextButton(onPressed: () => ensureLoggedIn(context, state), child: const Text('Log in / Register')),
     TextButton(onPressed: onSettings, child: const Text('Settings')),
     const SizedBox(width: 8),
   ];

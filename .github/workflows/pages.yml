@@ -32,12 +32,12 @@ jobs:
       - run: flutter analyze
       - run: flutter test
 
-      # The site lives at https://simple-api-dev.github.io/forums-client-flutter/
+      # The site lives at https://simple-api-dev.github.io/forums-client/
       # The demo key comes from the SIMPLEAPI_KEY repository variable (Settings,
       # Secrets and variables, Actions, Variables). It is compiled into the
       # public JavaScript, so use a free demo key. Unset means "no key" mode.
       - run: >
-          flutter build web --release --base-href /forums-client-flutter/
+          flutter build web --release --base-href /forums-client/
           --dart-define=SIMPLEAPI_KEY=${{ vars.SIMPLEAPI_KEY }}
 
       - uses: actions/upload-pages-artifact@v5.0.0

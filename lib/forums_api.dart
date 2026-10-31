@@ -16,12 +16,20 @@ import 'package:http/http.dart' as http;
 import 'models.dart';
 
 /// Thrown for any non-2xx answer. [message] is the API's own `message` when it
-/// sent one, e.g. "The selected status is invalid.".
+/// sent one, e.g. "The selected status is invalid.". [statusCode] is 0 when
+/// the API could not be reached at all.
 class ApiException implements Exception {
-  ApiException(this.statusCode, this.message);
+  ApiException(this.statusCode, this.message, {this.sessionEnded = false});
 
   final int statusCode;
   final String message;
+
+  /// True when this was a 401 on a call made while logged in and the login
+  /// token was the problem. The client has already dropped the token.
+  final bool sessionEnded;
+
+  /// True for a 401 that says the API key was not accepted.
+  bool get keyRejected => statusCode == 401 && RegExp(r'api ?key', caseSensitive: false).hasMatch(message);
 
   @override
   String toString() => message;
@@ -36,16 +44,24 @@ const topicType = 'Post';
 /// Report types: Noncompliant, Offensive, Other. The sample offers the last two.
 const reportTypes = ['Offensive', 'Other'];
 
+/// Called when a call made while logged in is answered with a 401 about the
+/// login token. The token has been dropped by then.
+typedef SessionExpiredCallback = void Function();
+
 class ForumsApi {
   ForumsApi({
     required this.apiKey,
     this.token,
     http.Client? client,
     this.host = 'forums.simpleapi.dev',
+    this.onSessionExpired,
   }) : _http = client ?? http.Client();
 
   final String apiKey;
   final String host;
+
+  /// Told when the login token stops working (see [SessionExpiredCallback]).
+  final SessionExpiredCallback? onSessionExpired;
 
   /// Set after [login] / [register]; sent as the Bearer token.
   String? token;
@@ -76,16 +92,16 @@ class ForumsApi {
   // ------------------------------------------------------------------ users
 
   /// POST /api/users/register - create a user that belongs to this key.
-  /// Answers 201 (older deployments 200) with a token, or 202 (no token) when the email is the one the
+  /// Answers 201 with a token, or 202 (no token) when the email is the one the
   /// key belongs to and a confirmation code was emailed instead.
   Future<AuthResult> register({required String name, required String email, required String password}) async {
-    final json = await _send('POST', '/api/users/register', body: {'name': name, 'email': email, 'password': password});
+    final json = await _send('POST', '/api/users/register', authenticated: false, body: {'name': name, 'email': email, 'password': password});
     return _authResult(json);
   }
 
   /// POST /api/users/login - returns the user and a token.
   Future<AuthResult> login({required String email, required String password}) async {
-    final json = await _send('POST', '/api/users/login', body: {'email': email, 'password': password});
+    final json = await _send('POST', '/api/users/login', authenticated: false, body: {'email': email, 'password': password});
     return _authResult(json);
   }
 
@@ -196,19 +212,22 @@ class ForumsApi {
   // ---------------------------------------------------------------- plumbing
 
   /// Sends one request and returns the decoded JSON. A JSON array is wrapped
-  /// as `{'_list': [...]}` so every caller gets a Map.
+  /// as `{'_list': [...]}` so every caller gets a Map. Pass
+  /// `authenticated: false` for calls that must not carry the Bearer token
+  /// (login and register).
   Future<Map<String, dynamic>> _send(
     String method,
     String path, {
     Map<String, String> query = const {},
     Map<String, Object?>? body,
+    bool authenticated = true,
   }) async {
     // [path] may already hold %XX escapes (see Uri.encodeComponent for slugs).
     // Uri.https would encode the % again, so parse it and only add the query.
     final uri = Uri.parse('https://$host$path').replace(queryParameters: {...query, 'apikey': apiKey});
     final request = http.Request(method, uri)
       ..headers['Accept'] = 'application/json'
-      ..headers.addAll({if (token != null) 'Authorization': 'Bearer $token'});
+      ..headers.addAll({if (authenticated && token != null) 'Authorization': 'Bearer $token'});
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
@@ -218,7 +237,7 @@ class ForumsApi {
     try {
       response = await http.Response.fromStream(await _http.send(request));
     } catch (e) {
-      throw ApiException(0, 'Could not reach $host ($e)');
+      throw ApiException(0, 'Could not reach $host. Check your connection and try again.');
     }
 
     Object? decoded;
@@ -231,7 +250,15 @@ class ForumsApi {
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(response.statusCode, _errorMessage(response.statusCode, decoded));
+      final message = _errorMessage(response.statusCode, decoded);
+      final error = ApiException(response.statusCode, message);
+      // A 401 about the login token, on a call that sent it: the session is over.
+      if (authenticated && token != null && response.statusCode == 401 && !error.keyRejected) {
+        token = null;
+        onSessionExpired?.call();
+        throw ApiException(401, message, sessionEnded: true);
+      }
+      throw error;
     }
     if (decoded is List) return {'_list': decoded};
     if (decoded is Map<String, dynamic>) return decoded;

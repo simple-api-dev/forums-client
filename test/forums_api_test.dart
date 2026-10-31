@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forums_client_flutter/forums_api.dart';
+import 'package:forums_client/forums_api.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -11,13 +11,17 @@ const fakeEmail = 'demo-user@example.invalid';
 const fakePassword = 'not-a-real-password';
 
 /// Builds an API whose HTTP client answers with [handler] and records requests.
-(ForumsApi, List<http.Request>) apiWith(http.Response Function(http.Request) handler, {String? token}) {
+(ForumsApi, List<http.Request>) apiWith(
+  http.Response Function(http.Request) handler, {
+  String? token,
+  void Function()? onSessionExpired,
+}) {
   final seen = <http.Request>[];
   final client = MockClient((request) async {
     seen.add(request);
     return handler(request);
   });
-  return (ForumsApi(apiKey: fakeKey, token: token, client: client), seen);
+  return (ForumsApi(apiKey: fakeKey, token: token, client: client, onSessionExpired: onSessionExpired), seen);
 }
 
 http.Response json(Object body, [int status = 200]) =>
@@ -158,12 +162,10 @@ void main() {
       expect(jsonDecode(seen.single.body), {'name': 'Jane', 'email': fakeEmail, 'password': fakePassword});
     });
 
-    test('register is accepted as 200 (older deployments) or 201', () async {
-      for (final status in [200, 201]) {
-        final (api, _) = apiWith((_) => json({'name': 'Jane', 'token': 'tok-$status', 'id': 8}, status));
-        final a = await api.register(name: 'Jane', email: fakeEmail, password: fakePassword);
-        expect(a.token, 'tok-$status');
-      }
+    test('register answers 201 with a token', () async {
+      final (api, _) = apiWith((_) => json({'name': 'Jane', 'token': 'tok-201', 'id': 8}, 201));
+      final a = await api.register(name: 'Jane', email: fakeEmail, password: fakePassword);
+      expect(a.token, 'tok-201');
     });
 
     test('register answering 202 (the key owner\'s email) gives no token', () async {
@@ -320,7 +322,54 @@ void main() {
 
     test('a network failure becomes an ApiException with status 0', () async {
       final api = ForumsApi(apiKey: fakeKey, client: MockClient((_) async => throw http.ClientException('offline')));
-      await expectLater(api.listForums(), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 0)));
+      await expectLater(
+        api.listForums(),
+        throwsA(isA<ApiException>()
+            .having((e) => e.statusCode, 'status', 0)
+            .having((e) => e.message, 'message', 'Could not reach forums.simpleapi.dev. Check your connection and try again.')),
+      );
+    });
+
+    test('login and register never send the Bearer token, even when one is set', () async {
+      final (api, seen) = apiWith((_) => json({'name': 'Jane', 'token': 'new', 'id': 8}, 201), token: 'old');
+      await api.login(email: fakeEmail, password: fakePassword);
+      await api.register(name: 'Jane', email: fakeEmail, password: fakePassword);
+      expect(seen.map((r) => r.url.path), ['/api/users/login', '/api/users/register']);
+      for (final r in seen) {
+        expect(r.headers.containsKey('Authorization'), isFalse);
+      }
+      expect(api.token, 'new');
+    });
+
+    test('a 401 about the token on a logged-in call drops the token and tells the app', () async {
+      var expired = 0;
+      final (api, _) = apiWith((_) => json({'message': 'Invalid auth token. Log in again.'}, 401), token: 'old', onSessionExpired: () => expired++);
+      await expectLater(api.createForum(title: 'x'), throwsA(isA<ApiException>().having((e) => e.sessionEnded, 'sessionEnded', isTrue)));
+      expect(api.token, isNull);
+      expect(expired, 1);
+    });
+
+    test('a 401 about the key keeps the login', () async {
+      var expired = 0;
+      final (api, _) = apiWith(
+        (_) => json({'message': 'Unauthorized. Please provide a valid apikey. Get a free key at https://keys.simpleapi.dev/?product=forums'}, 401),
+        token: 'tok',
+        onSessionExpired: () => expired++,
+      );
+      await expectLater(
+        api.createForum(title: 'x'),
+        throwsA(isA<ApiException>().having((e) => e.keyRejected, 'keyRejected', isTrue).having((e) => e.sessionEnded, 'sessionEnded', isFalse)),
+      );
+      expect(api.token, 'tok');
+      expect(expired, 0);
+    });
+
+    test('a wrong password on login is a plain 401 and does not end a session', () async {
+      var expired = 0;
+      final (api, _) = apiWith((_) => json({'message': 'Invalid email or password.'}, 401), token: 'tok', onSessionExpired: () => expired++);
+      await expectLater(api.login(email: fakeEmail, password: 'wrong'), throwsA(isA<ApiException>().having((e) => e.sessionEnded, 'sessionEnded', isFalse)));
+      expect(api.token, 'tok');
+      expect(expired, 0);
     });
 
     test('429 is reported as such', () async {
