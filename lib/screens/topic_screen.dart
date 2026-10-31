@@ -61,6 +61,12 @@ class _TopicScreenState extends State<TopicScreen> {
         if (mounted) showSnack(context, 'Vote counted. The score is now ${r.points}.');
       });
 
+  Future<void> _unvote(String type, int id) => _act(() async {
+        // DELETE /api/votes/{type}/{id}
+        final r = await api.removeVote(type, id);
+        if (mounted) showSnack(context, 'Vote taken back. The score is now ${r.points}.');
+      });
+
   Future<void> _report(String type, int id) async {
     if (!await ensureLoggedIn(context, state)) return;
     if (!mounted) return;
@@ -161,6 +167,7 @@ class _TopicScreenState extends State<TopicScreen> {
                   reported: t.status != 'Active',
                   mine: state.isMine(t.authorId),
                   onVote: (up) => _vote('topic', t.id, up),
+                  onUnvote: () => _unvote('topic', t.id),
                   onEdit: () => _editTopic(t),
                   onDelete: () => _deleteTopic(t),
                   onReport: () => _report('topic', t.id),
@@ -198,6 +205,7 @@ class _Actions extends StatelessWidget {
     required this.reported,
     required this.mine,
     required this.onVote,
+    required this.onUnvote,
     required this.onEdit,
     required this.onDelete,
     required this.onReport,
@@ -209,6 +217,7 @@ class _Actions extends StatelessWidget {
   final bool reported;
   final bool mine;
   final void Function(bool up) onVote;
+  final VoidCallback onUnvote;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onReport;
@@ -219,6 +228,7 @@ class _Actions extends StatelessWidget {
       IconButton(tooltip: 'Upvote', onPressed: () => onVote(true), icon: const Icon(Icons.arrow_upward)),
       Text('$score'),
       IconButton(tooltip: 'Downvote', onPressed: () => onVote(false), icon: const Icon(Icons.arrow_downward)),
+      IconButton(tooltip: 'Take back my vote', onPressed: onUnvote, icon: const Icon(Icons.undo)),
       if (mine) ...[
         TextButton(onPressed: onEdit, child: const Text('Edit')),
         TextButton(onPressed: onDelete, child: const Text('Delete')),
@@ -253,6 +263,7 @@ class _CommentTile extends StatelessWidget {
             reported: c.status != 'Active',
             mine: view.state.isMine(c.authorId),
             onVote: (up) => view._vote('comment', c.id, up),
+            onUnvote: () => view._unvote('comment', c.id),
             onEdit: () => view._editComment(c),
             onDelete: () => view._deleteComment(c),
             onReport: () => view._report('comment', c.id),

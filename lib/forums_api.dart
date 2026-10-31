@@ -27,29 +27,13 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-/// Values the API accepts (it answers 422 for anything else). The docs do not
-/// list them; they were found by trying the API (see tool/live_check).
+/// Values the API accepts (it answers 422 for anything else). Status is one of
+/// Draft, Active, Locked, Removed, Pending Review; topic type is one of Post,
+/// Video, Article, Image.
 const contentStatus = 'Active';
 const topicType = 'Post';
 
-/// Whether a forum or topic created with [title] can be read back.
-///
-/// The API builds slugs from titles (lowercase, spaces become `_`, anything
-/// else is kept) and then looks them up WITHOUT url-decoding the path. A slug
-/// that must be percent-encoded to travel in a URL (accents, emoji, `?`, `%`,
-/// `/`, `#`...) therefore answers 404 forever. This guard lets the UI refuse
-/// such titles up front.
-bool titleIsLookupSafe(String title) {
-  final slug = title.trim().toLowerCase().replaceAll(' ', '_');
-  // A `/` would survive encoding but split the path into two segments.
-  return slug.isNotEmpty && !slug.contains('/') && Uri.https('x', '/$slug').path == '/$slug';
-}
-
-const unsafeTitleMessage =
-    'Please use plain letters, numbers and simple punctuation in the title. '
-    'The API cannot look up titles with accents, emoji or ? % # / characters.';
-
-/// Report types the API accepted when tried: "Offensive" and "Other".
+/// Report types: Noncompliant, Offensive, Other. The sample offers the last two.
 const reportTypes = ['Offensive', 'Other'];
 
 class ForumsApi {
@@ -78,21 +62,21 @@ class ForumsApi {
 
   /// GET /api/forums/{slug}/topics - topics in a forum.
   Future<List<Topic>> listTopics(String forumSlug) async {
-    final json = await _send('GET', '/api/forums/$forumSlug/topics');
+    final json = await _send('GET', '/api/forums/${Uri.encodeComponent(forumSlug)}/topics');
     return [for (final t in json['_list'] as List) Topic.fromJson(t as Map<String, dynamic>)];
   }
 
   /// GET /api/topics/{slug} - one topic with its whole comment tree
   /// (replies nested under `comments`). Looked up by slug, not by id.
   Future<Topic> getTopic(String topicSlug) async {
-    final json = await _send('GET', '/api/topics/$topicSlug');
+    final json = await _send('GET', '/api/topics/${Uri.encodeComponent(topicSlug)}');
     return Topic.fromJson(json);
   }
 
   // ------------------------------------------------------------------ users
 
   /// POST /api/users/register - create a user that belongs to this key.
-  /// Answers 200 with a token, or 202 (no token) when the email is the one the
+  /// Answers 201 (older deployments 200) with a token, or 202 (no token) when the email is the one the
   /// key belongs to and a confirmation code was emailed instead.
   Future<AuthResult> register({required String name, required String email, required String password}) async {
     final json = await _send('POST', '/api/users/register', body: {'name': name, 'email': email, 'password': password});
@@ -123,7 +107,7 @@ class ForumsApi {
   // ---------------------------------------------------------------- writing
   // Everything below needs a logged-in user (Bearer token).
 
-  /// POST /api/forums - create a forum. Basic keys are limited to 3 forums.
+  /// POST /api/forums - create a forum. Basic keys are limited to 7 forums (the 8th answers 403).
   Future<Forum> createForum({required String title, String? body}) async {
     final json = await _send('POST', '/api/forums', body: {
       'title': title,
@@ -139,13 +123,13 @@ class ForumsApi {
   }
 
   /// POST /api/forums/{id}/topics - start a topic in a forum.
-  /// The docs call `body` optional but the API answers 422 without it.
-  Future<Topic> createTopic(int forumId, {required String title, required String body}) async {
+  /// `body` is optional (it defaults to an empty text).
+  Future<Topic> createTopic(int forumId, {required String title, String? body}) async {
     final json = await _send('POST', '/api/forums/$forumId/topics', body: {
       'title': title,
       'status': contentStatus,
       'type': topicType,
-      'body': body,
+      if (body != null && body.isNotEmpty) 'body': body,
     });
     return Topic.fromJson(json);
   }
@@ -185,18 +169,23 @@ class ForumsApi {
   }
 
   /// POST /api/votes/up/{type}/{id} or /api/votes/down/{type}/{id}, where
-  /// [type] is `topic` or `comment`. The API insists on a JSON body, so an
-  /// empty object is sent. The answer's `points` is the content's new total
-  /// score (not your own vote); repeating a vote changes nothing and there is
-  /// no call to take a vote back.
+  /// [type] is `topic` or `comment`. No body is needed. The answer's `points`
+  /// is the content's new total score (an integer), not your own vote;
+  /// repeating a vote changes nothing.
   Future<VoteResult> vote(String type, int id, {required bool up}) async {
-    final json = await _send('POST', '/api/votes/${up ? 'up' : 'down'}/$type/$id', body: const {});
+    final json = await _send('POST', '/api/votes/${up ? 'up' : 'down'}/$type/$id');
+    return VoteResult.fromJson(json);
+  }
+
+  /// DELETE /api/votes/{type}/{id} - take your vote back. Answers the new
+  /// total score like [vote]; taking back a vote you never cast is harmless.
+  Future<VoteResult> removeVote(String type, int id) async {
+    final json = await _send('DELETE', '/api/votes/$type/$id');
     return VoteResult.fromJson(json);
   }
 
   /// POST /api/reports/type/{type}/{id} - report a `topic` or `comment`.
-  /// ([reason] is one of [reportTypes].) This is the route that works; the
-  /// Swagger page documents /api/{type}/{id}/reports, which answers 404.
+  /// ([reason] is one of [reportTypes].)
   Future<void> report(String type, int id, {required String reason, String? details}) async {
     await _send('POST', '/api/reports/type/$type/$id', body: {
       'type': reason,
@@ -214,7 +203,9 @@ class ForumsApi {
     Map<String, String> query = const {},
     Map<String, Object?>? body,
   }) async {
-    final uri = Uri.https(host, path, {...query, 'apikey': apiKey});
+    // [path] may already hold %XX escapes (see Uri.encodeComponent for slugs).
+    // Uri.https would encode the % again, so parse it and only add the query.
+    final uri = Uri.parse('https://$host$path').replace(queryParameters: {...query, 'apikey': apiKey});
     final request = http.Request(method, uri)
       ..headers['Accept'] = 'application/json'
       ..headers.addAll({if (token != null) 'Authorization': 'Bearer $token'});

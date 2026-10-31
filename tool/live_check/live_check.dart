@@ -1,10 +1,10 @@
 // Live check of the Forums API v2 against the real service.
 //
-//     SIMPLEAPI_KEY=<your key> dart run tool/live_check/live_check.dart [out.md] [--orphan-report]
+//     SIMPLEAPI_KEY=<your key> dart run tool/live_check/live_check.dart [out.md] [--skip-orphan-report]
 //
-// --orphan-report also runs the one check that leaves a stuck row behind on
-// the key (deleting a report after its comment is gone answers 500, and the
-// report can then never be removed). Off by default.
+// The orphan-report check (delete a report after its comment is gone) used to
+// answer 500 and leave a stuck row on the key; it should be 200 now. Pass
+// --skip-orphan-report to leave it out against an API that is not fixed.
 //
 // The key is read from the environment and is never written anywhere. Test
 // users get random emails/passwords generated at run time. Requests are paced
@@ -181,40 +181,45 @@ Future<void> main(List<String> args) async {
     preexistingForums = r.list.length;
 
     // ------------------------------------------------------------- users
-    r = record('users', 'register user A', '200 + token/id', await call('POST', '/api/users/register', body: {'name': 'Sample A', 'email': email('a'), 'password': pwA}), (r) => st(r, 200) && r['token'] is String && r['id'] is int);
+    r = record('users', 'register user A', '201 (200 before the Part 1 deploy) + token/id', await call('POST', '/api/users/register', body: {'name': 'Sample A', 'email': email('a'), 'password': pwA}), (r) => (st(r, 201) || st(r, 200)) && r['token'] is String && r['id'] is int);
     tokenA = r['token'] as String?;
     idA = (r['id'] as int?) ?? 0;
     if (idA > 0) cleanup.add((kind: 'user', id: idA, owner: 'A'));
     creds['A'] = (email: email('a'), pw: pwA);
 
-    r = record('users', 'register user B', '200 + token/id', await call('POST', '/api/users/register', body: {'name': 'Sample B', 'email': email('b'), 'password': pwB}), (r) => st(r, 200) && r['token'] is String);
+    r = record('users', 'register user B', '201 (200 before the Part 1 deploy) + token/id', await call('POST', '/api/users/register', body: {'name': 'Sample B', 'email': email('b'), 'password': pwB}), (r) => (st(r, 201) || st(r, 200)) && r['token'] is String);
     tokenB = r['token'] as String?;
     idB = (r['id'] as int?) ?? 0;
     if (idB > 0) cleanup.add((kind: 'user', id: idB, owner: 'B'));
     creds['B'] = (email: email('b'), pw: pwB);
 
-    r = record('users', 'register duplicate email', '4xx (docs silent; 409/422 expected)', await call('POST', '/api/users/register', body: {'name': 'Dup', 'email': email('a'), 'password': pwA}), is4xx);
+    notes.add('Register answered HTTP ${checks[checks.length - 2].actual.split(' ')[1]} (Part 1).');
+    record('users', 'register duplicate email', '409', await call('POST', '/api/users/register', body: {'name': 'Dup', 'email': email('a'), 'password': pwA}), (r) => st(r, 409));
+    r = record('users', 'register email without a dotted domain ("x@localhost")', '422 (Part 1; 200 and a user is created until it is deployed)', await call('POST', '/api/users/register', body: {'name': 'Dotless', 'email': 'dotless$tag@localhost', 'password': pwA}), (r) => st(r, 422));
+    if ((r.status == 200 || r.status == 201) && r['id'] is int) {
+      cleanup.add((kind: 'user', id: r['id'] as int, owner: 'D'));
+      creds['D'] = (email: 'dotless$tag@localhost', pw: pwA);
+    }
     record('users', 'register bad email', '422', await call('POST', '/api/users/register', body: {'name': 'Bad', 'email': 'not-an-email', 'password': pwA}), (r) => st(r, 422));
-    r = record('users', 'register short password (3 chars)', '4xx (docs silent about a minimum)', await call('POST', '/api/users/register', body: {'name': 'Short', 'email': email('s'), 'password': 'abc'}), is4xx);
-    if (r.status == 200 && r['id'] is int) {
+    r = record('users', 'register short password (3 chars)', '422', await call('POST', '/api/users/register', body: {'name': 'Short', 'email': email('s'), 'password': 'abc'}), (r) => st(r, 422));
+    if ((r.status == 200 || r.status == 201) && r['id'] is int) {
       // The API accepted it: remember to delete that user again.
       cleanup.add((kind: 'user', id: r['id'] as int, owner: 'S'));
       creds['S'] = (email: email('s'), pw: 'abc');
     }
     record('users', 'register without name', '422', await call('POST', '/api/users/register', body: {'email': email('n'), 'password': pwA}), (r) => st(r, 422));
     record('users', 'register with empty body', '422', await call('POST', '/api/users/register', body: <String, Object?>{}), (r) => st(r, 422));
+    record('users', 'register with malformed JSON', '400', await call('POST', '/api/users/register', rawBody: '{"name": "a", "email":', headers: {'Content-Type': 'application/json'}), (r) => st(r, 400));
     record('users', 'register with non-JSON body', '4xx', await call('POST', '/api/users/register', rawBody: 'name=a&email=b', headers: {'Content-Type': 'application/x-www-form-urlencoded'}), is4xx);
 
     r = record('users', 'login right credentials', '200 + token', await call('POST', '/api/users/login', body: {'email': email('a'), 'password': pwA}), (r) => st(r, 200) && r['token'] is String);
     final oldTokenA = tokenA;
     tokenA = (r['token'] as String?) ?? tokenA;
-    record('users', 'login wrong password', '404 (per docs)', await call('POST', '/api/users/login', body: {'email': email('a'), 'password': 'wrong-${randomString(6)}'}), (r) => st(r, 404));
-    record('users', 'login unknown email', '404 (per docs)', await call('POST', '/api/users/login', body: {'email': email('nobody'), 'password': pwA}), (r) => st(r, 404));
+    record('users', 'login wrong password', '401 "Invalid email or password."', await call('POST', '/api/users/login', body: {'email': email('a'), 'password': 'wrong-${randomString(6)}'}), (r) => st(r, 401) && r.message == 'Invalid email or password.');
+    record('users', 'login unknown email', '401 "Invalid email or password."', await call('POST', '/api/users/login', body: {'email': email('nobody'), 'password': pwA}), (r) => st(r, 401) && r.message == 'Invalid email or password.');
+    record('users', 'login with a short password', '401', await call('POST', '/api/users/login', body: {'email': email('a'), 'password': 'x'}), (r) => st(r, 401));
     record('users', 'login without password', '422', await call('POST', '/api/users/login', body: {'email': email('a')}), (r) => st(r, 422));
-    record('users', 'GET /users/me with token', '200 + user', await call('GET', '/api/users/me', token: tokenA), (r) => st(r, 200) && r['id'] == idA);
-    if (checks.last.actual.contains('"token"')) {
-      notes.add('`GET /api/users/me` returns the caller\'s own bearer token in the response body (not needed by clients).');
-    }
+    record('users', 'GET /users/me with token (no token field)', '200 + user without `token`', await call('GET', '/api/users/me', token: tokenA), (r) => st(r, 200) && r['id'] == idA && !r.map.containsKey('token'));
     record('users', 'GET /users/me without token', '401', await call('GET', '/api/users/me'), (r) => st(r, 401));
     record('users', 'GET /users/me with garbage token', '401', await call('GET', '/api/users/me', token: 'garbage'), (r) => st(r, 401));
     record('users', 'GET /users (admin only) as normal user', '403', await call('GET', '/api/users', token: tokenA), (r) => st(r, 403));
@@ -243,12 +248,13 @@ Future<void> main(List<String> args) async {
     record('forums', 'list topics of an empty forum', '200 + []', await call('GET', '/api/forums/$forumSlug/topics'), (r) => st(r, 200) && r.list.isEmpty);
     record('forums', 'list topics of unknown forum', '404', await call('GET', '/api/forums/no_such_forum_$tag/topics'), (r) => st(r, 404));
     record('forums', 'delete forum 3 as non-author B', '403', await call('DELETE', '/api/forums/$forum3', token: tokenB), (r) => st(r, 403));
-    record('forums', 'documented route DELETE /forum/{id} (singular)', '200 per docs', await call('DELETE', '/api/forum/$forum3', token: tokenA), (r) => st(r, 200));
+    record('forums', 'DELETE /forum/{id} (singular, no longer documented)', '404', await call('DELETE', '/api/forum/$forum3', token: tokenA), (r) => st(r, 404));
     record('forums', 'DELETE /forums/{id} (plural, used by the app) as author', '200', await call('DELETE', '/api/forums/$forum3', token: tokenA), (r) => st(r, 200));
     record('forums', 'update forum 2 as non-author B', '403', await call('PUT', '/api/forums/$forum2', token: tokenB, body: {'body': 'hijack', 'status': 'Active'}), (r) => st(r, 403));
     record('forums', 'update forum 2 as author', '200', await call('PUT', '/api/forums/$forum2', token: tokenA, body: {'body': 'Edited description', 'status': 'Active'}), (r) => st(r, 200));
 
-    // Slugs: the API never url-decodes path segments (see README / REPORT).
+    // Slugs are generated url-safe now and paths are url-decoded.
+    final slugRe = RegExp(r'^[a-z0-9_]+$');
     for (final t in ['Bob\'s (best) forum! $tag', 'Caf\u00e9 au lait $tag', 'Smile \u{1F600} $tag', 'Why? $tag', '100% $tag']) {
       final created = await call('POST', '/api/forums', token: tokenA, body: {'title': t, 'status': 'Active'});
       track('forum', created, 'A');
@@ -257,19 +263,24 @@ Future<void> main(List<String> args) async {
         continue;
       }
       final slug = '${created['slug']}';
-      final uriPath = Uri.https(host, '/api/forums/$slug/topics', {'apikey': key}); // encoded the way a client library does
-      final read = await call('GET', uriPath.path.substring(0), query: const {}, rawPath: true);
-      final safe = titleIsLookupSafe(t);
-      checks.add(Check('slugs', 'forum titled "${redact(t, 40)}" can be read back by its slug', safe ? '200 (slug is URL-safe)' : '200 per docs; the app refuses this title', 'create HTTP ${created.status}, slug "${redact(slug, 40)}", GET HTTP ${read.status}; app guard says ${safe ? 'safe' : 'unsafe'}', read.status == 200 || !safe));
-      if (read.status != 200) notes.add('Forum slug `${redact(slug, 40)}` cannot be read (HTTP ${read.status}): the API does not url-decode path segments.');
+      final read = await call('GET', '/api/forums/${Uri.encodeComponent(slug)}/topics', rawPath: true);
+      checks.add(Check('slugs', 'forum titled "${redact(t, 40)}": slug is url-safe and the forum reads back', 'slug matches [a-z0-9_]+ and GET is 200', 'create HTTP ${created.status}, slug "${redact(slug, 40)}", GET HTTP ${read.status}', slugRe.hasMatch(slug) && read.status == 200));
+      if (t.startsWith('Caf')) {
+        checks.add(Check('slugs', 'accent is transliterated ("Caf\u00e9" -> "cafe")', 'slug starts with cafe_au_lait', 'slug "${redact(slug, 40)}"', slug.startsWith('cafe_au_lait')));
+        // Percent-encode the first letter: the API now url-decodes the path.
+        final encoded = '%${slug.codeUnitAt(0).toRadixString(16)}${slug.substring(1)}';
+        final dec = await call('GET', '/api/forums/$encoded', rawPath: true);
+        checks.add(Check('slugs', 'a percent-encoded slug path is url-decoded', '200', 'GET /api/forums/$encoded -> HTTP ${dec.status}', dec.status == 200 && dec['id'] == created['id']));
+      }
       await call('DELETE', '/api/forums/${created['id']}', token: tokenA); // keep the number of live forums low
     }
 
-    // Docs: "limit of 3 forums per basic developer account". Keep creating
+    // Docs: "limit of 7 forums per Basic developer account". Keep creating
     // (up to 12 more) until the API says no; the extra forums are deleted at once.
     final extra = <int>[];
     var capResult = 'no limit reached after 12 extra forums';
     var capHit = false;
+    var capStatus = 0;
     var existing = 0;
     for (var n = 1; n <= 12 && !capHit; n++) {
       final rr = await call('POST', '/api/forums', token: tokenA, body: {'title': 'Cap probe $n $tag', 'status': 'Active'});
@@ -278,11 +289,12 @@ Future<void> main(List<String> args) async {
         cleanup.add((kind: 'forum', id: rr['id'] as int, owner: 'A'));
       } else {
         capHit = true;
+        capStatus = rr.status;
         existing = (await call('GET', '/api/forums')).list.length;
         capResult = 'rejected with HTTP ${rr.status} ${redact(rr.raw)} when the key already had $existing forums';
       }
     }
-    checks.add(Check('forums', 'forum limit ("3 per basic developer account")', 'a forum beyond the 3rd is rejected', capResult, capHit && existing <= 3));
+    checks.add(Check('forums', 'forum limit (7 per Basic developer account)', 'the 8th forum is rejected with 403 and a message that says 7', capResult, capHit && existing == 7 && capStatus == 403 && capResult.contains('(7)')));
     notes.add('Forum limit probe: $capResult.');
     for (final id in extra) {
       await call('DELETE', '/api/forums/$id', token: tokenA);
@@ -294,17 +306,20 @@ Future<void> main(List<String> args) async {
     track('topic', r, 'A');
     final topicId = (r['id'] as int?) ?? 0;
     final topicSlug = '${r['slug']}';
-    r = record('topics', 'create a second topic with the same title in the same forum', 'docs silent: 200 (distinct slug) or 4xx', await call('POST', '/api/forums/$forumId/topics', token: tokenA, body: {'title': 'Topic one $tag', 'body': 'Same title again', 'status': 'Active', 'type': 'Post'}), (r) => st(r, 200) || is4xx(r));
+    r = record('topics', 'create a second topic with the same title in the same forum', '200 with a distinct slug (_1)', await call('POST', '/api/forums/$forumId/topics', token: tokenA, body: {'title': 'Topic one $tag', 'body': 'Same title again', 'status': 'Active', 'type': 'Post'}), (r) => st(r, 200) && '${r['slug']}' != topicSlug);
     if (r.status == 200) {
       track('topic', r, 'A');
       notes.add('Duplicate topic title in one forum: slug "${redact('${r['slug']}', 40)}" (first one is "$topicSlug").');
     }
     record('topics', 'create topic without title', '422', await call('POST', '/api/forums/$forumId/topics', token: tokenA, body: {'status': 'Active', 'type': 'Post'}), (r) => st(r, 422));
+    record('topics', 'create topic with type "URL" (not in the database enum)', '422', await call('POST', '/api/forums/$forumId/topics', token: tokenA, body: {'title': 't', 'status': 'Active', 'type': 'URL'}), (r) => st(r, 422));
+    r = record('topics', 'create topic with type "Article"', '200', await call('POST', '/api/forums/$forumId/topics', token: tokenA, body: {'title': 'Article $tag', 'status': 'Active', 'type': 'Article'}), (r) => st(r, 200));
+    track('topic', r, 'A');
     record('topics', 'create topic with bad type "Poem"', '422', await call('POST', '/api/forums/$forumId/topics', token: tokenA, body: {'title': 't', 'status': 'Active', 'type': 'Poem'}), (r) => st(r, 422));
     record('topics', 'create topic with bad status', '422', await call('POST', '/api/forums/$forumId/topics', token: tokenA, body: {'title': 't', 'status': 'nope', 'type': 'Post'}), (r) => st(r, 422));
-    r = record('topics', 'create topic with empty body (docs: body is optional)', '200 per docs', await call('POST', '/api/forums/$forumId/topics', token: tokenA, body: {'title': 'No text $tag', 'body': '', 'status': 'Active', 'type': 'Post'}), (r) => st(r, 200));
+    r = record('topics', 'create topic with empty body (body is optional)', '200', await call('POST', '/api/forums/$forumId/topics', token: tokenA, body: {'title': 'No text $tag', 'body': '', 'status': 'Active', 'type': 'Post'}), (r) => st(r, 200));
     track('topic', r, 'A');
-    r = record('topics', 'create topic with no body key (docs: body is optional)', '200 per docs', await call('POST', '/api/forums/$forumId/topics', token: tokenA, body: {'title': 'No body key $tag', 'status': 'Active', 'type': 'Post'}), (r) => st(r, 200));
+    r = record('topics', 'create topic with no body key (body is optional)', '200', await call('POST', '/api/forums/$forumId/topics', token: tokenA, body: {'title': 'No body key $tag', 'status': 'Active', 'type': 'Post'}), (r) => st(r, 200));
     track('topic', r, 'A');
     record('topics', 'create topic in unknown forum', '404', await call('POST', '/api/forums/99999999/topics', token: tokenA, body: {'title': 't', 'status': 'Active', 'type': 'Post'}), (r) => st(r, 404));
     r = record('topics', 'create topic with a 5000 char body', '200 or 422', await call('POST', '/api/forums/$forumId/topics', token: tokenA, body: {'title': 'Long $tag', 'body': 'x' * 5000, 'status': 'Active', 'type': 'Post'}), (r) => st(r, 200) || st(r, 422));
@@ -313,12 +328,17 @@ Future<void> main(List<String> args) async {
     record('topics', 'get topic by slug (with comments key)', '200 + comments list', await call('GET', '/api/topics/$topicSlug'), (r) => st(r, 200) && r['comments'] is List);
     record('topics', 'get topic by numeric id', '200 or 404 (docs name the param id in one place, slug in the path)', await call('GET', '/api/topics/$topicId'), (r) => st(r, 200) || st(r, 404));
     record('topics', 'get unknown topic', '404', await call('GET', '/api/topics/no_such_topic_$tag'), (r) => st(r, 404));
-    record('topics', 'search topics', '200', await call('GET', '/api/topics/search', query: {'phrase': 'Topic one'}), (r) => st(r, 200));
-    record('topics', 'search topics without phrase', '4xx (phrase is required in docs)', await call('GET', '/api/topics/search'), is4xx);
+    record('topics', 'search topics', '200 + matches', await call('GET', '/api/topics/search', query: {'phrase': 'Topic one'}), (r) => st(r, 200) && r.list.isNotEmpty);
+    record('topics', 'search topics, no match', '200 []', await call('GET', '/api/topics/search', query: {'phrase': 'zzzznomatch$tag'}), (r) => st(r, 200) && r.json is List && r.list.isEmpty);
+    record('topics', 'search topics without phrase or tags', '422', await call('GET', '/api/topics/search'), (r) => st(r, 422));
     record('topics', 'edit own topic', '200 + new body', await call('PUT', '/api/topics/$topicId', token: tokenA, body: {'body': 'Edited post', 'status': 'Active'}), (r) => st(r, 200) && r['body'] == 'Edited post');
     record('topics', 'edit topic as non-author B', '403', await call('PUT', '/api/topics/$topicId', token: tokenB, body: {'body': 'hijacked', 'status': 'Active'}), (r) => st(r, 403));
     record('topics', 'edit topic without token', '401', await call('PUT', '/api/topics/$topicId', body: {'body': 'x', 'status': 'Active'}), (r) => st(r, 401));
-    record('topics', 'edit topic with empty body (body is required in docs)', '422', await call('PUT', '/api/topics/$topicId', token: tokenA, body: {'body': '', 'status': 'Active'}), (r) => st(r, 422));
+    record('topics', 'edit topic with empty body', '200 or 422 (body is optional on update; record behaviour)', await call('PUT', '/api/topics/$topicId', token: tokenA, body: {'body': '', 'status': 'Active'}), (r) => st(r, 200) || st(r, 422));
+    if (checks.last.actual.startsWith('HTTP 200')) {
+      await call('PUT', '/api/topics/$topicId', token: tokenA, body: {'body': 'Edited post', 'status': 'Active'});
+    }
+    record('topics', 'edit topic without a body key leaves the text alone', '200 + body unchanged', await call('PUT', '/api/topics/$topicId', token: tokenA, body: {'status': 'Active'}), (r) => st(r, 200) && r['body'] == 'Edited post');
     record('topics', 'edit topic without status', '422', await call('PUT', '/api/topics/$topicId', token: tokenA, body: {'body': 'x'}), (r) => st(r, 422));
     record('topics', 'edit unknown topic', '404', await call('PUT', '/api/topics/99999999', token: tokenA, body: {'body': 'x', 'status': 'Active'}), (r) => st(r, 404));
     record('topics', 'get topic after edit shows new body', '200', await call('GET', '/api/topics/$topicSlug'), (r) => st(r, 200) && r['body'] == 'Edited post');
@@ -364,12 +384,13 @@ Future<void> main(List<String> args) async {
     });
     record('comments', 'GET /topics/{id}/comments', '200 + list', await call('GET', '/api/topics/$topicId/comments'), (r) => st(r, 200) && r.list.isNotEmpty);
     record('comments', 'GET /comments/{id}', '200', await call('GET', '/api/comments/$c1'), (r) => st(r, 200) && r['id'] == c1);
+    record('comments', 'GET /comments/abc (non-numeric id)', '404', await call('GET', '/api/comments/abc'), (r) => st(r, 404));
     record('comments', 'GET unknown comment', '404', await call('GET', '/api/comments/99999999'), (r) => st(r, 404));
     record('comments', 'search comments, one-word phrase', '200 + matches', await call('GET', '/api/comments/search', query: {'phrase': 'Top'}), (r) => st(r, 200) && r.list.isNotEmpty);
-    record('comments', 'search comments, phrase with a space ("Top level")', '200 + matches', await call('GET', '/api/comments/search', query: {'phrase': 'Top level'}), (r) => st(r, 200));
-    record('comments', 'search comments, second word only ("level")', '200 + matches', await call('GET', '/api/comments/search', query: {'phrase': 'level'}), (r) => st(r, 200));
-    record('comments', 'search comments, no match', 'docs silent: 200 [] or 404', await call('GET', '/api/comments/search', query: {'phrase': 'zzzznomatch$tag'}), (r) => st(r, 200) || st(r, 404));
-    record('comments', 'search comments without phrase', '4xx (phrase is required in docs)', await call('GET', '/api/comments/search'), is4xx);
+    record('comments', 'search comments, phrase with a space ("Top level")', '200 + matches', await call('GET', '/api/comments/search', query: {'phrase': 'Top level'}), (r) => st(r, 200) && r.list.isNotEmpty);
+    record('comments', 'search comments, second word only ("level")', '200 + matches (replies included)', await call('GET', '/api/comments/search', query: {'phrase': 'level'}), (r) => st(r, 200) && r.list.isNotEmpty);
+    record('comments', 'search comments, no match', '200 []', await call('GET', '/api/comments/search', query: {'phrase': 'zzzznomatch$tag'}), (r) => st(r, 200) && r.json is List && r.list.isEmpty);
+    record('comments', 'search comments without phrase', '422', await call('GET', '/api/comments/search'), (r) => st(r, 422));
     record('comments', 'edit own comment', '200 + new body', await call('PUT', '/api/comments/$c1', token: tokenA, body: {'body': 'Top level (edited)', 'status': 'Active'}), (r) => st(r, 200) && r['body'] == 'Top level (edited)');
     record('comments', 'edit comment as non-author B', '403', await call('PUT', '/api/comments/$c1', token: tokenB, body: {'body': 'hijack', 'status': 'Active'}), (r) => st(r, 403));
     record('comments', 'edit comment with empty body', '422', await call('PUT', '/api/comments/$c1', token: tokenA, body: {'body': '', 'status': 'Active'}), (r) => st(r, 422));
@@ -379,19 +400,21 @@ Future<void> main(List<String> args) async {
 
     // ------------------------------------------------------------- votes
     record('votes', 'upvote topic without token', '401', await call('POST', '/api/votes/up/topic/$topicId', body: <String, Object?>{}), (r) => st(r, 401));
-    record('votes', 'upvote topic with NO JSON body (what a naive client sends)', '200 (docs show no body)', await call('POST', '/api/votes/up/topic/$topicId', token: tokenB), (r) => st(r, 200));
-    r = record('votes', 'upvote topic as B with {}', '200 + votes (docs: integer "votes")', await call('POST', '/api/votes/up/topic/$topicId', token: tokenB, body: <String, Object?>{}), (r) => st(r, 200) && r['votes'] is int);
-    if (r.status == 200 && r.map.containsKey('points') && !r.map.containsKey('votes')) {
-      notes.add('Vote answer is `{"points":"1"}` (a string named `points`); the docs say `{"votes": integer}`.');
-    }
+    record('votes', 'upvote topic with NO body', '200 + {"points": <int>}', await call('POST', '/api/votes/up/topic/$topicId', token: tokenB), (r) => st(r, 200) && r['points'] is int);
+    record('votes', 'upvote topic as B with {} (still accepted)', '200 + {"points": <int>}', await call('POST', '/api/votes/up/topic/$topicId', token: tokenB, body: <String, Object?>{}), (r) => st(r, 200) && r['points'] is int);
     record('votes', 'upvote the same topic again as B (repeat)', '200 or 4xx; record behaviour', await call('POST', '/api/votes/up/topic/$topicId', token: tokenB, body: <String, Object?>{}), (r) => r.status == 200 || is4xx(r));
     record('votes', 'topic score after repeat', 'score 1 (one vote per user)', await call('GET', '/api/topics/$topicSlug'), (r) => r['score'] == 1);
     record('votes', 'downvote the same topic as B (switch)', '200', await call('POST', '/api/votes/down/topic/$topicId', token: tokenB, body: <String, Object?>{}), (r) => st(r, 200));
     record('votes', 'topic score after switch', 'score -1', await call('GET', '/api/topics/$topicSlug'), (r) => r['score'] == -1);
     record('votes', 'downvote again as B (repeat/remove?)', '200 or 4xx; record behaviour', await call('POST', '/api/votes/down/topic/$topicId', token: tokenB, body: <String, Object?>{}), (r) => r.status == 200 || is4xx(r));
-    record('votes', 'topic score after second downvote', 'score -1 or 0 (docs have no remove call)', await call('GET', '/api/topics/$topicSlug'), (r) => r['score'] == -1 || r['score'] == 0);
+    record('votes', 'topic score after second downvote', 'score -1', await call('GET', '/api/topics/$topicSlug'), (r) => r['score'] == -1);
+    record('votes', 'take the vote back: DELETE /votes/topic/{id}', '200 + {"points": 0}', await call('DELETE', '/api/votes/topic/$topicId', token: tokenB), (r) => st(r, 200) && r['points'] == 0);
+    record('votes', 'topic score after taking the vote back', 'score 0', await call('GET', '/api/topics/$topicSlug'), (r) => r['score'] == 0);
+    record('votes', 'take back a vote again (idempotent)', '200 + {"points": 0}', await call('DELETE', '/api/votes/topic/$topicId', token: tokenB), (r) => st(r, 200) && r['points'] == 0);
+    record('votes', 'take back a vote without token', '401', await call('DELETE', '/api/votes/topic/$topicId'), (r) => st(r, 401));
+    record('votes', 'take back a vote on an unknown topic', '404', await call('DELETE', '/api/votes/topic/99999999', token: tokenB), (r) => st(r, 404));
     record('votes', 'upvote own topic as A', '200 or 403 (docs silent)', await call('POST', '/api/votes/up/topic/$topicId', token: tokenA, body: <String, Object?>{}), (r) => r.status == 200 || r.status == 403);
-    record('votes', 'upvote comment as B', '200', await call('POST', '/api/votes/up/comment/$c1', token: tokenB, body: <String, Object?>{}), (r) => st(r, 200));
+    record('votes', 'upvote comment as B', '200', await call('POST', '/api/votes/up/comment/$c1', token: tokenB), (r) => st(r, 200));
     record('votes', 'comment score after upvote', 'score 1', await call('GET', '/api/comments/$c1'), (r) => r['score'] == 1);
     record('votes', 'upvote own comment as A', '200 or 403 (docs silent)', await call('POST', '/api/votes/up/comment/$c1', token: tokenA, body: <String, Object?>{}), (r) => r.status == 200 || r.status == 403);
     record('votes', 'upvote unknown topic', '404', await call('POST', '/api/votes/up/topic/99999999', token: tokenB, body: <String, Object?>{}), (r) => st(r, 404));
@@ -399,10 +422,13 @@ Future<void> main(List<String> args) async {
 
     // ------------------------------------------------------------- reports
     record('reports', 'report topic without token', '401', await call('POST', '/api/reports/type/topic/$topicId', body: {'type': 'Offensive'}), (r) => st(r, 401));
-    r = record('reports', 'documented route POST /{type}/{id}/reports', '200 per docs', await call('POST', '/api/topic/$topicId/reports', token: tokenB, body: {'type': 'Offensive', 'body': 'x'}), (r) => st(r, 200));
+    record('reports', 'old documented route POST /{type}/{id}/reports (no longer documented)', '404', await call('POST', '/api/topic/$topicId/reports', token: tokenB, body: {'type': 'Offensive', 'body': 'x'}), (r) => st(r, 404));
     r = record('reports', 'report topic via /reports/type/topic/{id} (route the app uses)', '200', await call('POST', '/api/reports/type/topic/$topicId', token: tokenB, body: {'type': 'Offensive', 'body': 'rude'}), (r) => st(r, 200) && r['id'] is int);
     track('report', r, 'B');
     final reportTopic = (r['id'] as int?) ?? 0;
+    record('reports', 'the report body is saved', 'GET /reports/{id} -> 200 body "rude"', await call('GET', '/api/reports/$reportTopic', token: tokenB), (r) => st(r, 200) && r['id'] == reportTopic && r['body'] == 'rude');
+    record('reports', 'GET /reports/{id} returns one report, not the list', '200 JSON object', await call('GET', '/api/reports/$reportTopic', token: tokenB), (r) => st(r, 200) && r.json is Map);
+    record('reports', 'GET /reports/{id} without token', '401', await call('GET', '/api/reports/$reportTopic'), (r) => st(r, 401));
     r = record('reports', 'report comment with type "Other"', '200', await call('POST', '/api/reports/type/comment/$c1', token: tokenB, body: {'type': 'Other'}), (r) => st(r, 200));
     final reportComment = (r['id'] as int?) ?? 0;
     for (final t in ['Spam', 'Harassment', 'Inappropriate']) {
@@ -415,7 +441,7 @@ Future<void> main(List<String> args) async {
     record('reports', 'report unknown topic', '404', await call('POST', '/api/reports/type/topic/99999999', token: tokenB, body: {'type': 'Offensive'}), (r) => st(r, 404));
     r = record('reports', 'report the same topic twice as B', '200 or 4xx; record behaviour', await call('POST', '/api/reports/type/topic/$topicId', token: tokenB, body: {'type': 'Offensive'}), (r) => r.status == 200 || is4xx(r));
     if (r.status == 200) track('report', r, 'B');
-    record('reports', 'GET /reports (documented) as normal user', '403 or 200', await call('GET', '/api/reports', token: tokenA), (r) => st(r, 200) || st(r, 403));
+    record('reports', 'GET /reports (admin list) as normal user', '403', await call('GET', '/api/reports', token: tokenA), (r) => st(r, 403));
     record('reports', 'a reported topic still shows its own body and status', 'docs silent: record behaviour', await call('GET', '/api/topics/$topicSlug'), (r) => r.status == 200);
     if (checks.last.actual.contains('pending moderation')) {
       notes.add('Reporting a topic or comment replaces its `body` with "This content has been reported and is pending moderation." and sets `status` to "Pending Review" in every GET (author included) until the report is removed; deleting the report restores the original text.');
@@ -431,15 +457,18 @@ Future<void> main(List<String> args) async {
     record('delete', 'delete own comment c1 (has 11 nested replies)', '200', await call('DELETE', '/api/comments/$c1', token: tokenA), (r) => st(r, 200));
     record('delete', 'replies are gone with their parent (cascade)', '200 + comments []', await call('GET', '/api/topics/$topicSlug'), (r) => st(r, 200) && (r['comments'] as List).isEmpty);
     record('delete', 'GET deleted comment', '404', await call('GET', '/api/comments/$c1'), (r) => st(r, 404));
-    if (args.contains('--orphan-report')) {
+    if (!args.contains('--skip-orphan-report')) {
       // A report whose comment was deleted first.
       r = await call('POST', '/api/comments/type/topic/$topicId', token: tokenA, body: {'body': 'Reported then deleted', 'status': 'Active'});
       final c3 = (r['id'] as int?) ?? 0;
       r = await call('POST', '/api/reports/type/comment/$c3', token: tokenB, body: {'type': 'Other'});
       final orphanReport = (r['id'] as int?) ?? 0;
       await call('DELETE', '/api/comments/$c3', token: tokenA);
-      r = record('delete', 'delete a report after its comment was deleted', '200', await call('DELETE', '/api/reports/$orphanReport', token: tokenB), (r) => st(r, 200));
-      if (r.status == 500) notes.add('Report $orphanReport could not be removed (HTTP 500) because its comment was deleted first; it stays on the demo key as an orphan.');
+      // The report goes together with its comment, so asking for it now is a
+      // clean 404 (it used to stay behind and make the DELETE answer 500).
+      record('delete', 'a report is removed together with its comment', 'GET /reports/{id} -> 404', await call('GET', '/api/reports/$orphanReport', token: tokenB), (r) => st(r, 404));
+      r = record('delete', 'delete a report after its comment was deleted', '200 or 404, never 500', await call('DELETE', '/api/reports/$orphanReport', token: tokenB), (r) => st(r, 200) || st(r, 404));
+      if (r.status >= 500) notes.add('Report $orphanReport could not be removed (HTTP ${r.status}) after its comment was deleted first; it may stay on the demo key as an orphan.');
     }
     record('delete', 'delete the same comment twice', '404', await call('DELETE', '/api/comments/$c1', token: tokenA), (r) => st(r, 404));
     record('delete', 'delete own topic', '200', await call('DELETE', '/api/topics/$topicId', token: tokenA), (r) => st(r, 200));
@@ -511,10 +540,11 @@ Future<void> clientRoundTrip(String email, String password) async {
   });
   await step('ForumsApi.login', () async => (await api.login(email: email, password: password)).token == null ? 'no token' : null);
   Forum? forum;
-  await step('ForumsApi.createForum', () async {
-    forum = await api.createForum(title: 'Client check ${randomString(5)}', body: 'made by the app client');
+  await step('ForumsApi.createForum (accented title, read back by slug)', () async {
+    forum = await api.createForum(title: 'Caf\u00e9 \u2615 check ${randomString(5)}?', body: 'made by the app client');
     cleanup.add((kind: 'forum', id: forum!.id, owner: 'C'));
-    return 'forum ${forum!.id}';
+    final back = await api.listTopics(forum!.slug);
+    return 'forum ${forum!.id}, slug "${forum!.slug}", topics ${back.length}';
   });
   await step('ForumsApi.listForums', () async => 'count ${(await api.listForums()).length}');
   Topic? topic;
@@ -524,6 +554,11 @@ Future<void> clientRoundTrip(String email, String password) async {
     return 'topic ${topic!.id}';
   });
   await step('ForumsApi.listTopics', () async => 'count ${(await api.listTopics(forum!.slug)).length}');
+  await step('ForumsApi.createTopic without text', () async {
+    final t = await api.createTopic(forum!.id, title: 'No text topic');
+    cleanup.add((kind: 'topic', id: t.id, owner: 'C'));
+    return 'topic ${t.id}, body "${t.body}"';
+  });
   Comment? comment;
   await step('ForumsApi.addComment', () async {
     comment = await api.addComment(topic!.id, 'client comment');
@@ -542,6 +577,7 @@ Future<void> clientRoundTrip(String email, String password) async {
   await step('ForumsApi.updateTopic', () async => (await api.updateTopic(topic!.id, body: 'edited text')).body);
   await step('ForumsApi.updateComment', () async => (await api.updateComment(comment!.id, body: 'edited comment')).body);
   await step('ForumsApi.vote up (topic)', () async => 'points ${(await api.vote('topic', topic!.id, up: true)).points}');
+  await step('ForumsApi.removeVote (topic)', () async => 'points ${(await api.removeVote('topic', topic!.id)).points}');
   await step('ForumsApi.vote down (comment)', () async => 'points ${(await api.vote('comment', comment!.id, up: false)).points}');
   await step('ForumsApi.report (comment)', () async {
     await api.report('comment', comment!.id, reason: 'Other');
@@ -600,7 +636,7 @@ Future<void> runCleanup() async {
 
 Future<void> writeResults(String path) async {
   final b = StringBuffer()
-    ..writeln('| # | Area | Check | Expected (per docs) | Actual | Result |')
+    ..writeln('| # | Area | Check | Expected | Actual | Result |')
     ..writeln('|---|------|-------|---------------------|--------|--------|');
   var i = 0;
   for (final c in checks) {

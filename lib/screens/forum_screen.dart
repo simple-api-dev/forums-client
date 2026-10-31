@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
-import '../forums_api.dart';
 import '../models.dart';
 import '../open_url.dart';
 import 'settings_screen.dart';
@@ -150,7 +149,6 @@ class _NewTopicDialogState extends State<_NewTopicDialog> {
   final _title = TextEditingController();
   final _body = TextEditingController();
   String? _titleError;
-  String? _bodyError;
 
   @override
   void dispose() {
@@ -164,10 +162,9 @@ class _NewTopicDialogState extends State<_NewTopicDialog> {
     return AlertDialog(
       title: const Text('New topic'),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: _title, autofocus: true, decoration: InputDecoration(labelText: 'Title', border: const OutlineInputBorder(), errorText: _titleError, errorMaxLines: 4)),
+        TextField(controller: _title, autofocus: true, decoration: InputDecoration(labelText: 'Title', border: const OutlineInputBorder(), errorText: _titleError)),
         const SizedBox(height: 12),
-        // The API answers 422 "The body field is required" without text.
-        TextField(controller: _body, minLines: 3, maxLines: 6, decoration: InputDecoration(labelText: 'Text', border: const OutlineInputBorder(), errorText: _bodyError)),
+        TextField(controller: _body, minLines: 3, maxLines: 6, decoration: const InputDecoration(labelText: 'Text (optional)', border: OutlineInputBorder())),
       ]),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
@@ -175,15 +172,8 @@ class _NewTopicDialogState extends State<_NewTopicDialog> {
           onPressed: () {
             final title = _title.text.trim();
             final text = _body.text.trim();
-            setState(() {
-              _titleError = title.isEmpty
-                  ? 'Required'
-                  : titleIsLookupSafe(title)
-                  ? null
-                  : unsafeTitleMessage;
-              _bodyError = text.isEmpty ? 'Required' : null;
-            });
-            if (_titleError != null || _bodyError != null) return;
+            setState(() => _titleError = title.isEmpty ? 'Required' : null);
+            if (_titleError != null) return;
             Navigator.pop(context, (title: title, body: text));
           },
           child: const Text('Post'),
