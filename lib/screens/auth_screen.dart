@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import '../forums_api.dart';
 import 'ui.dart';
 
 /// Log in or register. Users belong to your key, so you can
@@ -48,6 +49,9 @@ class _AuthScreenState extends State<AuthScreen> {
       }
       widget.state.loggedInAs(name: result.name.isEmpty ? 'you' : result.name, id: result.id);
       if (mounted) Navigator.of(context).pop(true);
+    } on ApiException catch (e) {
+      // A failed login is a 401 whose message ("Invalid email or password.") is all the user needs.
+      if (mounted) setState(() => _error = e.statusCode == 401 && !_register ? e.message : describeError(e));
     } catch (e) {
       if (mounted) setState(() => _error = describeError(e));
     } finally {

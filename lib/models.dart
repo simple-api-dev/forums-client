@@ -129,8 +129,7 @@ class AuthResult {
   final String message;
 }
 
-/// Answer of a vote call: the content's new total score. The API sends it as
-/// a string (`{"points":"1"}`) or sometimes a number (`{"points":0}`).
+/// Answer of a vote call: the content's new total score (`{"points":1}`).
 class VoteResult {
   const VoteResult(this.points);
 

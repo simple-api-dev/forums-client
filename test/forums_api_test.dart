@@ -131,38 +131,39 @@ void main() {
     expect(c.replies.single.replies.single.body, 'reply to the reply');
   });
 
-  test('slugs go into the path as they are: the API does not url-decode', () async {
-    // Punctuation survives untouched...
+  test('slugs are url-encoded into the path (the API url-decodes it), never twice', () async {
+    // Url-safe slugs are untouched.
     var (api, seen) = apiWith((_) => json(topicJson));
-    await api.getTopic("bob's_(best)_forum!");
-    expect(seen.single.url.toString(), startsWith("https://forums.simpleapi.dev/api/topics/bob's_(best)_forum!?"));
-    // ...and nothing is encoded twice (no %25).
+    await api.getTopic('hello_topic_1');
+    expect(seen.single.url.path, '/api/topics/hello_topic_1');
+    // Older slugs with accents, emoji or reserved characters are encoded once.
     (api, seen) = apiWith((_) => json(topicJson));
-    await api.getTopic('café_au_lait');
-    expect(seen.single.url.toString(), isNot(contains('%25')));
-  });
-
-  test('titleIsLookupSafe refuses titles whose slug the API could never find again', () {
-    expect(titleIsLookupSafe('Hello world'), isTrue);
-    expect(titleIsLookupSafe("Bob's (best) forum!"), isTrue);
-    expect(titleIsLookupSafe('Q&A, tips; and more'), isTrue);
-    expect(titleIsLookupSafe('Café'), isFalse);
-    expect(titleIsLookupSafe('Smile \u{1F600}'), isFalse);
-    expect(titleIsLookupSafe('Why?'), isFalse);
-    expect(titleIsLookupSafe('100% sure'), isFalse);
-    expect(titleIsLookupSafe('a/b'), isFalse);
-    expect(titleIsLookupSafe('   '), isFalse);
+    await api.getTopic('café_au_lait?100%_#1/2 \u{1F600}');
+    expect(seen.single.url.toString(), isNot(contains('%25C3')));
+    expect(seen.single.url.path, '/api/topics/caf%C3%A9_au_lait%3F100%25_%231%2F2%20%F0%9F%98%80');
+    expect(seen.single.url.pathSegments.last, 'café_au_lait?100%_#1/2 \u{1F600}');
+    (api, seen) = apiWith((_) => json([topicJson]));
+    await api.listTopics('café');
+    expect(seen.single.url.path, '/api/forums/caf%C3%A9/topics');
   });
 
   group('users', () {
     test('register returns a token and the user id, and the api uses it', () async {
-      final (api, seen) = apiWith((_) => json({'name': 'Jane', 'email': fakeEmail, 'enabled': true, 'token': 'tok-1', 'admin': false, 'id': 8}));
+      final (api, seen) = apiWith((_) => json({'name': 'Jane', 'email': fakeEmail, 'enabled': true, 'token': 'tok-1', 'admin': false, 'id': 8}, 201));
       final a = await api.register(name: 'Jane', email: fakeEmail, password: fakePassword);
       expect(a.token, 'tok-1');
       expect(a.id, '8');
       expect(api.token, 'tok-1');
       expect(seen.single.url.path, '/api/users/register');
       expect(jsonDecode(seen.single.body), {'name': 'Jane', 'email': fakeEmail, 'password': fakePassword});
+    });
+
+    test('register is accepted as 200 (older deployments) or 201', () async {
+      for (final status in [200, 201]) {
+        final (api, _) = apiWith((_) => json({'name': 'Jane', 'token': 'tok-$status', 'id': 8}, status));
+        final a = await api.register(name: 'Jane', email: fakeEmail, password: fakePassword);
+        expect(a.token, 'tok-$status');
+      }
     });
 
     test('register answering 202 (the key owner\'s email) gives no token', () async {
@@ -173,17 +174,17 @@ void main() {
       expect(api.token, isNull);
     });
 
-    test('login failure is a 404 with the API message', () async {
-      final (api, _) = apiWith((_) => json({'message': 'Login Failed ($fakeEmail)'}, 404));
-      expect(
-        () => api.login(email: fakeEmail, password: 'wrong'),
-        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404).having((e) => e.message, 'message', startsWith('Login Failed'))),
+    test('login failure is a 401 with the API message', () async {
+      final (api, _) = apiWith((_) => json({'message': 'Invalid email or password.'}, 401));
+      await expectLater(
+        api.login(email: fakeEmail, password: 'wrong'),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 401).having((e) => e.message, 'message', 'Invalid email or password.')),
       );
     });
 
-    test('register errors: duplicate email is 400, bad email and short password are 422', () async {
-      var (api, _) = apiWith((_) => json({'message': 'User registration failed, email already registered to this developer account.'}, 400));
-      await expectLater(api.register(name: 'a', email: fakeEmail, password: fakePassword), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 400)));
+    test('register errors: duplicate email is 409, bad email and short password are 422', () async {
+      var (api, _) = apiWith((_) => json({'message': 'User registration failed, email already registered to this developer account.'}, 409));
+      await expectLater(api.register(name: 'a', email: fakeEmail, password: fakePassword), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 409)));
       (api, _) = apiWith((_) => json({'message': 'The email must be a valid email address.'}, 422));
       await expectLater(api.register(name: 'a', email: 'nope', password: fakePassword), throwsA(isA<ApiException>().having((e) => e.message, 'message', contains('valid email'))));
       (api, _) = apiWith((_) => json({'message': 'The password must be at least 8 characters.'}, 422));
@@ -221,19 +222,18 @@ void main() {
       expect(jsonDecode(seen.single.body), {'title': 'x', 'status': 'Active'});
     });
 
-    test('createTopic always sends body, type Post and status Active', () async {
+    test('createTopic sends body, type Post and status Active', () async {
       final (api, seen) = apiWith((_) => json(topicJson), token: 't');
       await api.createTopic(10, title: 'Hello topic', body: 'first post');
       expect(seen.single.url.path, '/api/forums/10/topics');
       expect(jsonDecode(seen.single.body), {'title': 'Hello topic', 'status': 'Active', 'type': 'Post', 'body': 'first post'});
     });
 
-    test('a topic without text is rejected by the API with 422 (docs call body optional)', () async {
-      final (api, _) = apiWith((_) => json({'message': 'The body field is required.'}, 422), token: 't');
-      await expectLater(
-        api.createTopic(10, title: 't', body: ''),
-        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 422).having((e) => e.message, 'message', 'The body field is required.')),
-      );
+    test('a topic needs no text: the body is left out', () async {
+      final (api, seen) = apiWith((_) => json({...topicJson, 'body': ''}), token: 't');
+      final t = await api.createTopic(10, title: 'Video topic');
+      expect(jsonDecode(seen.single.body), {'title': 'Video topic', 'status': 'Active', 'type': 'Post'});
+      expect(t.body, '');
     });
 
     test('comment on a topic and reply to a comment use the type in the path', () async {
@@ -262,23 +262,27 @@ void main() {
       expect(jsonDecode(seen.first.body), {'body': 'new', 'status': 'Active'});
     });
 
-    test('voting posts an empty JSON object (the API answers 422 without a JSON body)', () async {
-      final (api, seen) = apiWith((_) => json({'points': '1'}), token: 't');
+    test('voting sends no body and answers the new integer score', () async {
+      final (api, seen) = apiWith((_) => json({'points': 1}), token: 't');
       final v = await api.vote('topic', 48, up: true);
       expect(v.points, 1);
+      expect(seen.single.method, 'POST');
       expect(seen.single.url.path, '/api/votes/up/topic/48');
-      expect(seen.single.body, '{}');
-      expect(seen.single.headers['Content-Type'], contains('application/json'));
+      expect(seen.single.body, isEmpty);
+      expect((await api.vote('comment', 1, up: false)).points, 1);
+      expect(seen.last.url.path, '/api/votes/down/comment/1');
     });
 
-    test('vote points can be a string or a number', () async {
-      var (api, _) = apiWith((_) => json({'points': '-1'}), token: 't');
-      expect((await api.vote('comment', 1, up: false)).points, -1);
-      (api, _) = apiWith((_) => json({'points': 0}), token: 't');
-      expect((await api.vote('topic', 1, up: true)).points, 0);
+    test('a vote is taken back with DELETE /api/votes/{type}/{id}', () async {
+      final (api, seen) = apiWith((_) => json({'points': 0}), token: 't');
+      final v = await api.removeVote('comment', 320);
+      expect(v.points, 0);
+      expect('${seen.single.method} ${seen.single.url.path}', 'DELETE /api/votes/comment/320');
+      expect(seen.single.headers['Authorization'], 'Bearer t');
+      expect(seen.single.body, isEmpty);
     });
 
-    test('report uses /reports/type/{type}/{id} (the documented route answers 404)', () async {
+    test('report uses /reports/type/{type}/{id}', () async {
       final (api, seen) = apiWith((_) => json({'type': 'Offensive', 'author_id': '9', 'status': 'Pending Review', 'id': 26}), token: 't');
       await api.report('topic', 48, reason: 'Offensive');
       expect(seen.single.url.path, '/api/reports/type/topic/48');

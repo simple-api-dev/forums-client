@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../config.dart';
-import '../forums_api.dart';
 import '../models.dart';
 import '../open_url.dart';
 import 'forum_screen.dart';
@@ -159,8 +158,6 @@ class _NewForumDialog extends StatefulWidget {
 class _NewForumDialogState extends State<_NewForumDialog> {
   final _title = TextEditingController();
   final _body = TextEditingController();
-  String? _error;
-
   @override
   void dispose() {
     _title.dispose();
@@ -173,7 +170,7 @@ class _NewForumDialogState extends State<_NewForumDialog> {
     return AlertDialog(
       title: const Text('New forum'),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: _title, autofocus: true, decoration: InputDecoration(labelText: 'Title', border: const OutlineInputBorder(), errorText: _error, errorMaxLines: 4)),
+        TextField(controller: _title, autofocus: true, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
         const SizedBox(height: 12),
         TextField(controller: _body, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description (optional)', border: OutlineInputBorder())),
       ]),
@@ -183,10 +180,6 @@ class _NewForumDialogState extends State<_NewForumDialog> {
           onPressed: () {
             final title = _title.text.trim();
             if (title.isEmpty) return;
-            if (!titleIsLookupSafe(title)) {
-              setState(() => _error = unsafeTitleMessage);
-              return;
-            }
             Navigator.pop(context, (title: title, body: _body.text.trim()));
           },
           child: const Text('Create'),

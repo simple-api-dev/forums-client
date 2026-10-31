@@ -166,7 +166,7 @@ void main() {
         buildKey: 'k',
         server: router({
           'GET /api/forums': (_) => json(forums),
-          'POST /api/users/register': (_) => json({'name': 'Jane', 'enabled': true, 'token': 'tok-9', 'admin': false, 'id': 8}),
+          'POST /api/users/register': (_) => json({'name': 'Jane', 'enabled': true, 'token': 'tok-9', 'admin': false, 'id': 8}, 201),
           'POST /api/forums': (r) {
             forums = [forumJson];
             return json(forumJson);
@@ -200,13 +200,13 @@ void main() {
       expect(find.text('Jane'), findsOneWidget);
     });
 
-    testWidgets('a wrong password shows the API\'s 404 message on the form', (tester) async {
+    testWidgets('a wrong password shows the API\'s 401 message on the form', (tester) async {
       await pumpApp(
         tester,
         buildKey: 'k',
         server: router({
           'GET /api/forums': (_) => json([]),
-          'POST /api/users/login': (_) => json({'message': 'Login Failed (someone)'}, 404),
+          'POST /api/users/login': (_) => json({'message': 'Invalid email or password.'}, 401),
         }),
       );
       await tester.tap(find.text('Log in'));
@@ -216,8 +216,8 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Log in'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Login Failed'), findsOneWidget);
-      expect(find.textContaining('Not found (404)'), findsOneWidget);
+      expect(find.text('Invalid email or password.'), findsOneWidget);
+      expect(find.textContaining('did not accept the key'), findsNothing);
     });
 
     testWidgets('logging out calls the API and shows Log in again', (tester) async {
@@ -236,16 +236,22 @@ void main() {
       expect(find.text('Log in'), findsOneWidget);
     });
 
-    testWidgets('a forum title the API could not find again is refused before any call', (tester) async {
-      final app = await pumpApp(tester, buildKey: 'k', loggedInAs: '8', server: router({'GET /api/forums': (_) => json([])}));
+    testWidgets('a forum title with accents and symbols is sent as typed', (tester) async {
+      final app = await pumpApp(
+        tester,
+        buildKey: 'k',
+        loggedInAs: '8',
+        server: router({'GET /api/forums': (_) => json([]), 'POST /api/forums': (_) => json({...forumJson, 'title': 'Café au lait?', 'slug': 'cafe_au_lait'})}),
+      );
       await tester.tap(find.text('Create the first forum'));
       await tester.pumpAndSettle();
-      await tester.enterText(find.widgetWithText(TextField, 'Title'), 'Café au lait');
+      await tester.enterText(find.widgetWithText(TextField, 'Title'), 'Café au lait?');
       await tester.tap(find.text('Create'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('plain letters'), findsOneWidget);
-      expect(app.seen.where((r) => r.method == 'POST'), isEmpty);
+      expect(find.textContaining('plain letters'), findsNothing);
+      final post = app.seen.firstWhere((r) => r.method == 'POST');
+      expect(jsonDecode(post.body)['title'], 'Café au lait?');
     });
   });
 
@@ -264,7 +270,7 @@ void main() {
       expect(app.seen.last.url.path, '/api/forums/probe_forum/topics');
     });
 
-    testWidgets('starting a topic needs text (the API rejects it otherwise)', (tester) async {
+    testWidgets('starting a topic needs a title; the text is optional', (tester) async {
       final app = await pumpApp(
         tester,
         buildKey: 'k',
@@ -276,13 +282,31 @@ void main() {
       await tester.tap(find.text('New topic'));
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.widgetWithText(TextField, 'Title'), 'Hello topic');
       await tester.tap(find.text('Post'));
       await tester.pumpAndSettle();
       expect(find.text('Required'), findsOneWidget);
       expect(app.seen.where((r) => r.method == 'POST'), isEmpty);
 
-      await tester.enterText(find.widgetWithText(TextField, 'Text'), 'first post');
+      await tester.enterText(find.widgetWithText(TextField, 'Title'), 'Hello topic');
+      await tester.tap(find.text('Post'));
+      await tester.pumpAndSettle();
+      var post = app.seen.firstWhere((r) => r.method == 'POST');
+      expect(jsonDecode(post.body), {'title': 'Hello topic', 'status': 'Active', 'type': 'Post'});
+    });
+
+    testWidgets('a topic with text sends the body', (tester) async {
+      final app = await pumpApp(
+        tester,
+        buildKey: 'k',
+        loggedInAs: '8',
+        server: router({...routes, 'POST /api/forums/10/topics': (_) => json(topicJson)}),
+      );
+      await tester.tap(find.text('Probe forum'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New topic'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Title'), 'Hello topic');
+      await tester.enterText(find.widgetWithText(TextField, 'Text (optional)'), 'first post');
       await tester.tap(find.text('Post'));
       await tester.pumpAndSettle();
       final post = app.seen.firstWhere((r) => r.method == 'POST');
@@ -387,23 +411,35 @@ void main() {
       expect(app.seen.where((r) => r.method == 'POST'), isEmpty);
     });
 
-    testWidgets('upvote posts an empty JSON object and reloads the topic', (tester) async {
-      final app = await openTopic(tester, loggedInAs: '77', extra: {'POST /api/votes/up/topic/48': (_) => json({'points': '1'})});
+    testWidgets('upvote posts without a body and reloads the topic', (tester) async {
+      final app = await openTopic(tester, loggedInAs: '77', extra: {'POST /api/votes/up/topic/48': (_) => json({'points': 1})});
       await tester.tap(find.byTooltip('Upvote').first);
       await tester.pumpAndSettle();
 
       final vote = app.seen.firstWhere((r) => r.method == 'POST');
-      expect(vote.body, '{}');
+      expect(vote.body, isEmpty);
       expect(vote.headers['Authorization'], 'Bearer tok');
       expect(find.textContaining('score is now 1'), findsOneWidget);
       expect(app.seen.last.url.path, '/api/topics/hello_topic'); // reloaded
     });
 
     testWidgets('downvoting a comment uses the comment type', (tester) async {
-      final app = await openTopic(tester, loggedInAs: '77', extra: {'POST /api/votes/down/comment/320': (_) => json({'points': '-1'})});
+      final app = await openTopic(tester, loggedInAs: '77', extra: {'POST /api/votes/down/comment/320': (_) => json({'points': -1})});
       await tester.tap(find.byTooltip('Downvote').at(1)); // [0] is the topic
       await tester.pumpAndSettle();
       expect(app.seen.any((r) => r.url.path == '/api/votes/down/comment/320'), isTrue);
+    });
+
+    testWidgets('a vote is taken back with DELETE and the topic reloads', (tester) async {
+      final app = await openTopic(tester, loggedInAs: '77', extra: {'DELETE /api/votes/topic/48': (_) => json({'points': 0})});
+      await tester.tap(find.byTooltip('Take back my vote').first);
+      await tester.pumpAndSettle();
+
+      final del = app.seen.firstWhere((r) => r.method == 'DELETE');
+      expect(del.url.path, '/api/votes/topic/48');
+      expect(del.headers['Authorization'], 'Bearer tok');
+      expect(find.textContaining('Vote taken back'), findsOneWidget);
+      expect(app.seen.last.url.path, '/api/topics/hello_topic');
     });
 
     testWidgets('adds a top-level comment', (tester) async {
