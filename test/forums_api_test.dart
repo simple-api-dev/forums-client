@@ -1,0 +1,327 @@
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:forums_client_flutter/forums_api.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+
+// Made-up values: these tests never touch the real API or a real key.
+const fakeKey = 'test-key';
+const fakeEmail = 'demo-user@example.invalid';
+const fakePassword = 'not-a-real-password';
+
+/// Builds an API whose HTTP client answers with [handler] and records requests.
+(ForumsApi, List<http.Request>) apiWith(http.Response Function(http.Request) handler, {String? token}) {
+  final seen = <http.Request>[];
+  final client = MockClient((request) async {
+    seen.add(request);
+    return handler(request);
+  });
+  return (ForumsApi(apiKey: fakeKey, token: token, client: client), seen);
+}
+
+http.Response json(Object body, [int status = 200]) =>
+    http.Response(jsonEncode(body), status, headers: {'content-type': 'application/json'});
+
+// Shapes copied from real answers of forums.simpleapi.dev (ids and text made up).
+const forumJson = {
+  'id': 10,
+  'title': 'Probe forum',
+  'slug': 'probe_forum',
+  'body': 'desc',
+  'status': 'Active',
+  'author_id': '8',
+  'updated_at': '2026-10-31T20:41:48.000000Z',
+  'rules_text': [],
+  'reports': [],
+};
+
+const topicJson = {
+  'id': 48,
+  'forum_id': 10,
+  'title': 'Hello topic',
+  'slug': 'hello_topic',
+  'body': 'first post',
+  'url': null,
+  'type': 'Post',
+  'status': 'Active',
+  'author_id': '8',
+  'updated_at': '2026-10-31T20:41:56.000000Z',
+  'tag_names': [],
+  'reports': [],
+  'score': 0,
+};
+
+/// A topic with one comment, one reply and a reply to the reply.
+final topicWithTree = {
+  ...topicJson,
+  'comments': [
+    {
+      'id': 320,
+      'commentable_id': 48,
+      'commentable_type': r'App\Models\Topic',
+      'body': 'top comment',
+      'status': 'Active',
+      'author_id': '8',
+      'locked_at': null,
+      'updated_at': '2026-10-31T20:42:11.000000Z',
+      'reports': [],
+      'score': 0,
+      'comments': [
+        {
+          'id': 321,
+          'commentable_id': 320,
+          'commentable_type': r'App\Models\Comment',
+          'body': 'reply',
+          'status': 'Active',
+          'author_id': '9',
+          'score': 2,
+          'comments': [
+            {'id': 322, 'commentable_id': 321, 'body': 'reply to the reply', 'status': 'Active', 'author_id': '8', 'score': 0, 'comments': []},
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+void main() {
+  test('sends the key as the apikey query parameter, not as a header', () async {
+    final (api, seen) = apiWith((_) => json([]));
+    await api.listForums();
+
+    final r = seen.single;
+    expect(r.method, 'GET');
+    expect(r.url.host, 'forums.simpleapi.dev');
+    expect(r.url.path, '/api/forums');
+    expect(r.url.queryParameters['apikey'], fakeKey);
+    expect(r.headers.containsKey('Authorization'), isFalse);
+    expect(r.headers.values.any((v) => v.contains(fakeKey)), isFalse);
+  });
+
+  test('a new key has no forums: an empty JSON array is an empty list', () async {
+    final (api, _) = apiWith((_) => http.Response('[]', 200));
+    expect(await api.listForums(), isEmpty);
+  });
+
+  test('parses forums (author_id arrives as a string)', () async {
+    final (api, _) = apiWith((_) => json([forumJson]));
+    final f = (await api.listForums()).single;
+    expect(f.id, 10);
+    expect(f.slug, 'probe_forum');
+    expect(f.authorId, '8');
+  });
+
+  test('lists topics of a forum by slug', () async {
+    final (api, seen) = apiWith((_) => json([topicJson]));
+    final topics = await api.listTopics('probe_forum');
+    expect(seen.single.url.path, '/api/forums/probe_forum/topics');
+    expect(topics.single.title, 'Hello topic');
+    expect(topics.single.forumId, 10);
+  });
+
+  test('reads a topic by slug and parses the nested comment tree', () async {
+    final (api, seen) = apiWith((_) => json(topicWithTree));
+    final t = await api.getTopic('hello_topic');
+    expect(seen.single.url.path, '/api/topics/hello_topic');
+    final c = t.comments.single;
+    expect(c.body, 'top comment');
+    expect(c.replies.single.body, 'reply');
+    expect(c.replies.single.score, 2);
+    expect(c.replies.single.replies.single.body, 'reply to the reply');
+  });
+
+  test('slugs go into the path as they are: the API does not url-decode', () async {
+    // Punctuation survives untouched...
+    var (api, seen) = apiWith((_) => json(topicJson));
+    await api.getTopic("bob's_(best)_forum!");
+    expect(seen.single.url.toString(), startsWith("https://forums.simpleapi.dev/api/topics/bob's_(best)_forum!?"));
+    // ...and nothing is encoded twice (no %25).
+    (api, seen) = apiWith((_) => json(topicJson));
+    await api.getTopic('café_au_lait');
+    expect(seen.single.url.toString(), isNot(contains('%25')));
+  });
+
+  test('titleIsLookupSafe refuses titles whose slug the API could never find again', () {
+    expect(titleIsLookupSafe('Hello world'), isTrue);
+    expect(titleIsLookupSafe("Bob's (best) forum!"), isTrue);
+    expect(titleIsLookupSafe('Q&A, tips; and more'), isTrue);
+    expect(titleIsLookupSafe('Café'), isFalse);
+    expect(titleIsLookupSafe('Smile \u{1F600}'), isFalse);
+    expect(titleIsLookupSafe('Why?'), isFalse);
+    expect(titleIsLookupSafe('100% sure'), isFalse);
+    expect(titleIsLookupSafe('a/b'), isFalse);
+    expect(titleIsLookupSafe('   '), isFalse);
+  });
+
+  group('users', () {
+    test('register returns a token and the user id, and the api uses it', () async {
+      final (api, seen) = apiWith((_) => json({'name': 'Jane', 'email': fakeEmail, 'enabled': true, 'token': 'tok-1', 'admin': false, 'id': 8}));
+      final a = await api.register(name: 'Jane', email: fakeEmail, password: fakePassword);
+      expect(a.token, 'tok-1');
+      expect(a.id, '8');
+      expect(api.token, 'tok-1');
+      expect(seen.single.url.path, '/api/users/register');
+      expect(jsonDecode(seen.single.body), {'name': 'Jane', 'email': fakeEmail, 'password': fakePassword});
+    });
+
+    test('register answering 202 (the key owner\'s email) gives no token', () async {
+      final (api, _) = apiWith((_) => json({'message': 'A code was emailed.', 'confirmation_required': true}, 202));
+      final a = await api.register(name: 'Owner', email: fakeEmail, password: fakePassword);
+      expect(a.token, isNull);
+      expect(a.message, 'A code was emailed.');
+      expect(api.token, isNull);
+    });
+
+    test('login failure is a 404 with the API message', () async {
+      final (api, _) = apiWith((_) => json({'message': 'Login Failed ($fakeEmail)'}, 404));
+      expect(
+        () => api.login(email: fakeEmail, password: 'wrong'),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404).having((e) => e.message, 'message', startsWith('Login Failed'))),
+      );
+    });
+
+    test('register errors: duplicate email is 400, bad email and short password are 422', () async {
+      var (api, _) = apiWith((_) => json({'message': 'User registration failed, email already registered to this developer account.'}, 400));
+      await expectLater(api.register(name: 'a', email: fakeEmail, password: fakePassword), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 400)));
+      (api, _) = apiWith((_) => json({'message': 'The email must be a valid email address.'}, 422));
+      await expectLater(api.register(name: 'a', email: 'nope', password: fakePassword), throwsA(isA<ApiException>().having((e) => e.message, 'message', contains('valid email'))));
+      (api, _) = apiWith((_) => json({'message': 'The password must be at least 8 characters.'}, 422));
+      await expectLater(api.register(name: 'a', email: fakeEmail, password: 'abc'), throwsA(isA<ApiException>().having((e) => e.message, 'message', contains('8 characters'))));
+    });
+
+    test('logout sends the token, then forgets it; an already-invalid token still throws 401', () async {
+      final (api, seen) = apiWith((_) => http.Response('true', 200), token: 'tok-1');
+      await api.logout();
+      expect(seen.single.headers['Authorization'], 'Bearer tok-1');
+      expect(seen.single.url.path, '/api/users/logout');
+      expect(api.token, isNull);
+
+      final (api2, _) = apiWith((_) => json({'message': 'Invalid auth token. Log in again.'}, 401), token: 'old');
+      await expectLater(api2.logout(), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 401)));
+    });
+  });
+
+  group('writing', () {
+    test('createForum sends title and status Active, a bearer token and no author', () async {
+      final (api, seen) = apiWith((_) => json(forumJson), token: 'tok-1');
+      final f = await api.createForum(title: 'Probe forum', body: 'desc');
+      final r = seen.single;
+      expect(r.method, 'POST');
+      expect(r.url.path, '/api/forums');
+      expect(r.headers['Authorization'], 'Bearer tok-1');
+      expect(r.headers['Content-Type'], contains('application/json'));
+      expect(jsonDecode(r.body), {'title': 'Probe forum', 'status': 'Active', 'body': 'desc'});
+      expect(f.slug, 'probe_forum');
+    });
+
+    test('createForum omits an empty description', () async {
+      final (api, seen) = apiWith((_) => json(forumJson), token: 't');
+      await api.createForum(title: 'x');
+      expect(jsonDecode(seen.single.body), {'title': 'x', 'status': 'Active'});
+    });
+
+    test('createTopic always sends body, type Post and status Active', () async {
+      final (api, seen) = apiWith((_) => json(topicJson), token: 't');
+      await api.createTopic(10, title: 'Hello topic', body: 'first post');
+      expect(seen.single.url.path, '/api/forums/10/topics');
+      expect(jsonDecode(seen.single.body), {'title': 'Hello topic', 'status': 'Active', 'type': 'Post', 'body': 'first post'});
+    });
+
+    test('a topic without text is rejected by the API with 422 (docs call body optional)', () async {
+      final (api, _) = apiWith((_) => json({'message': 'The body field is required.'}, 422), token: 't');
+      await expectLater(
+        api.createTopic(10, title: 't', body: ''),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 422).having((e) => e.message, 'message', 'The body field is required.')),
+      );
+    });
+
+    test('comment on a topic and reply to a comment use the type in the path', () async {
+      final (api, seen) = apiWith((_) => json({'id': 5, 'body': 'x', 'status': 'Active', 'author_id': '8', 'comments': []}), token: 't');
+      await api.addComment(48, 'top comment');
+      await api.addReply(320, 'reply');
+      expect(seen[0].url.path, '/api/comments/type/topic/48');
+      expect(seen[1].url.path, '/api/comments/type/comment/320');
+      expect(jsonDecode(seen[1].body), {'body': 'reply', 'status': 'Active'});
+    });
+
+    test('edit and delete', () async {
+      final (api, seen) = apiWith((r) => r.method == 'DELETE' ? json({'message': 'deleted'}) : json({...topicJson, 'body': 'new'}), token: 't');
+      expect((await api.updateTopic(48, body: 'new')).body, 'new');
+      await api.updateComment(320, body: 'new');
+      await api.deleteTopic(48);
+      await api.deleteComment(320);
+      await api.deleteForum(10);
+      expect(seen.map((r) => '${r.method} ${r.url.path}'), [
+        'PUT /api/topics/48',
+        'PUT /api/comments/320',
+        'DELETE /api/topics/48',
+        'DELETE /api/comments/320',
+        'DELETE /api/forums/10',
+      ]);
+      expect(jsonDecode(seen.first.body), {'body': 'new', 'status': 'Active'});
+    });
+
+    test('voting posts an empty JSON object (the API answers 422 without a JSON body)', () async {
+      final (api, seen) = apiWith((_) => json({'points': '1'}), token: 't');
+      final v = await api.vote('topic', 48, up: true);
+      expect(v.points, 1);
+      expect(seen.single.url.path, '/api/votes/up/topic/48');
+      expect(seen.single.body, '{}');
+      expect(seen.single.headers['Content-Type'], contains('application/json'));
+    });
+
+    test('vote points can be a string or a number', () async {
+      var (api, _) = apiWith((_) => json({'points': '-1'}), token: 't');
+      expect((await api.vote('comment', 1, up: false)).points, -1);
+      (api, _) = apiWith((_) => json({'points': 0}), token: 't');
+      expect((await api.vote('topic', 1, up: true)).points, 0);
+    });
+
+    test('report uses /reports/type/{type}/{id} (the documented route answers 404)', () async {
+      final (api, seen) = apiWith((_) => json({'type': 'Offensive', 'author_id': '9', 'status': 'Pending Review', 'id': 26}), token: 't');
+      await api.report('topic', 48, reason: 'Offensive');
+      expect(seen.single.url.path, '/api/reports/type/topic/48');
+      expect(jsonDecode(seen.single.body), {'type': 'Offensive'});
+    });
+
+    test('reporting twice is a 409', () async {
+      final (api, _) = apiWith((_) => json({'message': 'You have already reported this topic.'}, 409), token: 't');
+      await expectLater(api.report('topic', 48, reason: 'Other'), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 409)));
+    });
+  });
+
+  group('errors', () {
+    test('403 when editing someone else\'s content carries the API message', () async {
+      final (api, _) = apiWith((_) => json({'message': "Only the topic's author, a moderator or an admin can change this topic."}, 403), token: 't');
+      await expectLater(api.updateTopic(48, body: 'x'), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 403).having((e) => e.message, 'message', contains('author'))));
+    });
+
+    test('401 without a key, 404 for an unknown topic', () async {
+      var (api, _) = apiWith((_) => json({'message': 'Unauthorized.  Please provide a valid apikey.'}, 401));
+      await expectLater(api.listForums(), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 401)));
+      (api, _) = apiWith((_) => json({'message': 'Topic nope not found.'}, 404));
+      await expectLater(api.getTopic('nope'), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404)));
+    });
+
+    test('a 500 with the framework\'s pretty-printed JSON still gives a message', () async {
+      final (api, _) = apiWith((_) => http.Response('{\n    "message": "Server Error"\n}', 500));
+      await expectLater(api.listForums(), throwsA(isA<ApiException>().having((e) => e.message, 'message', 'Server Error')));
+    });
+
+    test('a non-JSON error body gives a generic message with the status', () async {
+      final (api, _) = apiWith((_) => http.Response('<html>Bad gateway</html>', 502));
+      await expectLater(api.listForums(), throwsA(isA<ApiException>().having((e) => e.message, 'message', 'Request failed (HTTP 502).')));
+    });
+
+    test('a network failure becomes an ApiException with status 0', () async {
+      final api = ForumsApi(apiKey: fakeKey, client: MockClient((_) async => throw http.ClientException('offline')));
+      await expectLater(api.listForums(), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 0)));
+    });
+
+    test('429 is reported as such', () async {
+      final (api, _) = apiWith((_) => json({'message': 'Throttle Limit Exceeded'}, 429));
+      await expectLater(api.listForums(), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 429)));
+    });
+  });
+}
