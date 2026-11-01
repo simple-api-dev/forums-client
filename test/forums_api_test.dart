@@ -234,7 +234,7 @@ void main() {
     });
 
     test('register errors: duplicate email is 409, bad email and short password are 422', () async {
-      var (api, _) = apiWith((_) => json({'message': 'User registration failed, email already registered to this developer account.'}, 409));
+      var (api, _) = apiWith((_) => json({'message': 'That email is already registered to this key.'}, 409));
       await expectLater(api.register(name: 'a', email: fakeEmail, password: fakePassword), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 409)));
       (api, _) = apiWith((_) => json({'message': 'The email must be a valid email address.'}, 422));
       await expectLater(api.register(name: 'a', email: 'nope', password: fakePassword), throwsA(isA<ApiException>().having((e) => e.message, 'message', contains('valid email'))));
@@ -367,7 +367,7 @@ void main() {
 
     test('a non-JSON error body gives a generic message with the status', () async {
       final (api, _) = apiWith((_) => http.Response('<html>Bad gateway</html>', 502));
-      await expectLater(api.listForums(), throwsA(isA<ApiException>().having((e) => e.message, 'message', 'Request failed (HTTP 502).')));
+      await expectLater(api.listForums(), throwsA(isA<ApiException>().having((e) => e.message, 'message', 'Something went wrong. Please try again.')));
     });
 
     test('a network failure becomes an ApiException with status 0', () async {

@@ -15,7 +15,7 @@ class ForumsApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SimpleAPI Forums',
+      title: 'Forums API sample | SimpleAPI',
       theme: ThemeData(colorSchemeSeed: const Color(0xFF0066CC), useMaterial3: true),
       // The app opens straight on content.
       home: ForumsScreen(state: state, openHome: openHome),
