@@ -28,14 +28,24 @@ http.Response json(Object body, [int status = 200]) =>
     http.Response(jsonEncode(body), status, headers: {'content-type': 'application/json'});
 
 // Shapes copied from real answers of forums.simpleapi.dev (ids and text made up).
+/// A list answer, one page holding every row.
+http.Response page(List<Object?> rows) => json({'data': rows, 'total': rows.length, 'page': 1, 'per_page': 100});
+
+/// What register, register/confirm and login answer.
+http.Response session(String token, {String name = 'Jane', int id = 8, int status = 200}) => json({
+      'token': token,
+      'expires_at': '2026-12-01T03:47:06Z',
+      'user': {'id': id, 'name': name, 'email': fakeEmail, 'admin': false, 'enabled': true, 'created_at': '2026-11-01T03:47:06Z', 'updated_at': '2026-11-01T03:47:06Z'},
+    }, status);
+
 const forumJson = {
   'id': 10,
   'title': 'Probe forum',
   'slug': 'probe_forum',
   'body': 'desc',
   'status': 'Active',
-  'author_id': '8',
-  'updated_at': '2026-10-31T20:41:48.000000Z',
+  'user_id': 8,
+  'updated_at': '2026-10-31T20:41:48Z',
   'rules_text': [],
   'reports': [],
 };
@@ -49,8 +59,8 @@ const topicJson = {
   'url': null,
   'type': 'Post',
   'status': 'Active',
-  'author_id': '8',
-  'updated_at': '2026-10-31T20:41:56.000000Z',
+  'user_id': 8,
+  'updated_at': '2026-10-31T20:41:56Z',
   'tag_names': [],
   'reports': [],
   'score': 0,
@@ -66,9 +76,9 @@ final topicWithTree = {
       'commentable_type': r'App\Models\Topic',
       'body': 'top comment',
       'status': 'Active',
-      'author_id': '8',
+      'user_id': 8,
       'locked_at': null,
-      'updated_at': '2026-10-31T20:42:11.000000Z',
+      'updated_at': '2026-10-31T20:42:11Z',
       'reports': [],
       'score': 0,
       'comments': [
@@ -78,10 +88,10 @@ final topicWithTree = {
           'commentable_type': r'App\Models\Comment',
           'body': 'reply',
           'status': 'Active',
-          'author_id': '9',
+          'user_id': 9,
           'score': 2,
           'comments': [
-            {'id': 322, 'commentable_id': 321, 'body': 'reply to the reply', 'status': 'Active', 'author_id': '8', 'score': 0, 'comments': []},
+            {'id': 322, 'commentable_id': 321, 'body': 'reply to the reply', 'status': 'Active', 'user_id': 8, 'score': 0, 'comments': []},
           ],
         },
       ],
@@ -91,7 +101,7 @@ final topicWithTree = {
 
 void main() {
   test('sends the key as the apikey query parameter, not as a header', () async {
-    final (api, seen) = apiWith((_) => json([]));
+    final (api, seen) = apiWith((_) => page([]));
     await api.listForums();
 
     final r = seen.single;
@@ -103,25 +113,48 @@ void main() {
     expect(r.headers.values.any((v) => v.contains(fakeKey)), isFalse);
   });
 
-  test('a new key has no forums: an empty JSON array is an empty list', () async {
-    final (api, _) = apiWith((_) => http.Response('[]', 200));
+  test('a new key has no forums: empty data is an empty list', () async {
+    final (api, _) = apiWith((_) => page([]));
     expect(await api.listForums(), isEmpty);
   });
 
-  test('parses forums (author_id arrives as a string)', () async {
-    final (api, _) = apiWith((_) => json([forumJson]));
+  test('parses forums (user_id is an integer)', () async {
+    final (api, _) = apiWith((_) => page([forumJson]));
     final f = (await api.listForums()).single;
     expect(f.id, 10);
     expect(f.slug, 'probe_forum');
-    expect(f.authorId, '8');
+    expect(f.userId, 8);
   });
 
   test('lists topics of a forum by slug', () async {
-    final (api, seen) = apiWith((_) => json([topicJson]));
+    final (api, seen) = apiWith((_) => page([topicJson]));
     final topics = await api.listTopics('probe_forum');
     expect(seen.single.url.path, '/api/forums/probe_forum/topics');
     expect(topics.single.title, 'Hello topic');
     expect(topics.single.forumId, 10);
+  });
+
+  test('a list is read page by page until total is reached', () async {
+    final (api, seen) = apiWith((r) {
+      final number = int.parse(r.url.queryParameters['page']!);
+      return json({'data': [{...topicJson, 'id': number}], 'total': 2, 'page': number, 'per_page': 100});
+    });
+    final topics = await api.listTopics('probe_forum');
+    expect(topics.map((t) => t.id), [1, 2]);
+    expect(seen.map((r) => r.url.queryParameters['page']), ['1', '2']);
+    expect(seen.first.url.queryParameters['per_page'], '100');
+  });
+
+  test('reads never send the token, so a token that ran out cannot break a public list', () async {
+    final (api, seen) = apiWith((r) => r.url.path.endsWith('hello_topic') ? json(topicJson) : page([]), token: 'old');
+    await api.listForums();
+    await api.listTopics('probe_forum');
+    await api.getTopic('hello_topic');
+    expect(seen.length, 3);
+    for (final r in seen) {
+      expect(r.headers.containsKey('Authorization'), isFalse);
+    }
+    expect(api.token, 'old');
   });
 
   test('reads a topic by slug and parses the nested comment tree', () async {
@@ -146,24 +179,25 @@ void main() {
     expect(seen.single.url.toString(), isNot(contains('%25C3')));
     expect(seen.single.url.path, '/api/topics/caf%C3%A9_au_lait%3F100%25_%231%2F2%20%F0%9F%98%80');
     expect(seen.single.url.pathSegments.last, 'café_au_lait?100%_#1/2 \u{1F600}');
-    (api, seen) = apiWith((_) => json([topicJson]));
+    (api, seen) = apiWith((_) => page([topicJson]));
     await api.listTopics('café');
     expect(seen.single.url.path, '/api/forums/caf%C3%A9/topics');
   });
 
   group('users', () {
     test('register returns a token and the user id, and the api uses it', () async {
-      final (api, seen) = apiWith((_) => json({'name': 'Jane', 'email': fakeEmail, 'enabled': true, 'token': 'tok-1', 'admin': false, 'id': 8}, 201));
+      final (api, seen) = apiWith((_) => session('tok-1', status: 201));
       final a = await api.register(name: 'Jane', email: fakeEmail, password: fakePassword);
       expect(a.token, 'tok-1');
-      expect(a.id, '8');
+      expect(a.id, 8);
+      expect(a.name, 'Jane');
       expect(api.token, 'tok-1');
       expect(seen.single.url.path, '/api/users/register');
       expect(jsonDecode(seen.single.body), {'name': 'Jane', 'email': fakeEmail, 'password': fakePassword});
     });
 
     test('register answers 201 with a token', () async {
-      final (api, _) = apiWith((_) => json({'name': 'Jane', 'token': 'tok-201', 'id': 8}, 201));
+      final (api, _) = apiWith((_) => session('tok-201', status: 201));
       final a = await api.register(name: 'Jane', email: fakeEmail, password: fakePassword);
       expect(a.token, 'tok-201');
     });
@@ -194,7 +228,7 @@ void main() {
     });
 
     test('logout sends the token, then forgets it; an already-invalid token still throws 401', () async {
-      final (api, seen) = apiWith((_) => http.Response('true', 200), token: 'tok-1');
+      final (api, seen) = apiWith((_) => json({'message': 'Logged out.'}), token: 'tok-1');
       await api.logout();
       expect(seen.single.headers['Authorization'], 'Bearer tok-1');
       expect(seen.single.url.path, '/api/users/logout');
@@ -239,7 +273,7 @@ void main() {
     });
 
     test('comment on a topic and reply to a comment use the type in the path', () async {
-      final (api, seen) = apiWith((_) => json({'id': 5, 'body': 'x', 'status': 'Active', 'author_id': '8', 'comments': []}), token: 't');
+      final (api, seen) = apiWith((_) => json({'id': 5, 'body': 'x', 'status': 'Active', 'user_id': 8, 'comments': []}), token: 't');
       await api.addComment(48, 'top comment');
       await api.addReply(320, 'reply');
       expect(seen[0].url.path, '/api/comments/type/topic/48');
@@ -261,7 +295,9 @@ void main() {
         'DELETE /api/comments/320',
         'DELETE /api/forums/10',
       ]);
-      expect(jsonDecode(seen.first.body), {'body': 'new', 'status': 'Active'});
+      // a PUT changes only what is sent: an edit must not reset the status
+      expect(jsonDecode(seen.first.body), {'body': 'new'});
+      expect(jsonDecode(seen[1].body), {'body': 'new'});
     });
 
     test('voting sends no body and answers the new integer score', () async {
@@ -276,16 +312,15 @@ void main() {
     });
 
     test('a vote is taken back with DELETE /api/votes/{type}/{id}', () async {
-      final (api, seen) = apiWith((_) => json({'points': 0}), token: 't');
-      final v = await api.removeVote('comment', 320);
-      expect(v.points, 0);
+      final (api, seen) = apiWith((_) => json({'message': 'Vote removed.'}), token: 't');
+      await api.removeVote('comment', 320);
       expect('${seen.single.method} ${seen.single.url.path}', 'DELETE /api/votes/comment/320');
       expect(seen.single.headers['Authorization'], 'Bearer t');
       expect(seen.single.body, isEmpty);
     });
 
     test('report uses /reports/type/{type}/{id}', () async {
-      final (api, seen) = apiWith((_) => json({'type': 'Offensive', 'author_id': '9', 'status': 'Pending Review', 'id': 26}), token: 't');
+      final (api, seen) = apiWith((_) => json({'type': 'Offensive', 'user_id': 9, 'status': 'Pending Review', 'id': 26}), token: 't');
       await api.report('topic', 48, reason: 'Offensive');
       expect(seen.single.url.path, '/api/reports/type/topic/48');
       expect(jsonDecode(seen.single.body), {'type': 'Offensive'});
@@ -331,7 +366,7 @@ void main() {
     });
 
     test('login and register never send the Bearer token, even when one is set', () async {
-      final (api, seen) = apiWith((_) => json({'name': 'Jane', 'token': 'new', 'id': 8}, 201), token: 'old');
+      final (api, seen) = apiWith((_) => session('new', status: 201), token: 'old');
       await api.login(email: fakeEmail, password: fakePassword);
       await api.register(name: 'Jane', email: fakeEmail, password: fakePassword);
       expect(seen.map((r) => r.url.path), ['/api/users/login', '/api/users/register']);

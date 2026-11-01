@@ -6,7 +6,10 @@
 ///  * the developer key goes in the `apikey` QUERY parameter (never a header);
 ///  * calls that write data also send `Authorization: Bearer <token>`, where
 ///    the token comes from [ForumsApi.register] / [ForumsApi.login]. The
-///    client never sends an author: the API uses the logged-in user.
+///    client never sends an owner: the API uses the logged-in user.
+///
+/// Reading needs no login, so reads leave the token out. A token that has run
+/// out would otherwise turn a public list into a 401.
 library;
 
 import 'dart:convert';
@@ -48,6 +51,9 @@ const reportTypes = ['Offensive', 'Other'];
 /// login token. The token has been dropped by then.
 typedef SessionExpiredCallback = void Function();
 
+/// The most rows the API gives per page.
+const _perPage = 100;
+
 class ForumsApi {
   ForumsApi({
     required this.apiKey,
@@ -72,52 +78,47 @@ class ForumsApi {
 
   /// GET /api/forums - all forums of this key (an empty list at first).
   Future<List<Forum>> listForums() async {
-    final json = await _send('GET', '/api/forums');
-    return [for (final f in json['_list'] as List) Forum.fromJson(f as Map<String, dynamic>)];
+    return [for (final f in await _allRows('/api/forums')) Forum.fromJson(f)];
   }
 
   /// GET /api/forums/{slug}/topics - topics in a forum.
   Future<List<Topic>> listTopics(String forumSlug) async {
-    final json = await _send('GET', '/api/forums/${Uri.encodeComponent(forumSlug)}/topics');
-    return [for (final t in json['_list'] as List) Topic.fromJson(t as Map<String, dynamic>)];
+    return [for (final t in await _allRows('/api/forums/${Uri.encodeComponent(forumSlug)}/topics')) Topic.fromJson(t)];
   }
 
   /// GET /api/topics/{slug} - one topic with its whole comment tree
   /// (replies nested under `comments`). Looked up by slug, not by id.
   Future<Topic> getTopic(String topicSlug) async {
-    final json = await _send('GET', '/api/topics/${Uri.encodeComponent(topicSlug)}');
+    final json = await _send('GET', '/api/topics/${Uri.encodeComponent(topicSlug)}', authenticated: false);
     return Topic.fromJson(json);
   }
 
   // ------------------------------------------------------------------ users
 
   /// POST /api/users/register - create a user that belongs to this key.
-  /// Answers 201 with a token, or 202 (no token) when the email is the one the
+  /// Answers 201 with `{token, expires_at, user}`, or 202 (no token) when the email is the one the
   /// key belongs to and a confirmation code was emailed instead.
   Future<AuthResult> register({required String name, required String email, required String password}) async {
     final json = await _send('POST', '/api/users/register', authenticated: false, body: {'name': name, 'email': email, 'password': password});
     return _authResult(json);
   }
 
-  /// POST /api/users/login - returns the user and a token.
+  /// POST /api/users/login - answers `{token, expires_at, user}`.
   Future<AuthResult> login({required String email, required String password}) async {
     final json = await _send('POST', '/api/users/login', authenticated: false, body: {'email': email, 'password': password});
     return _authResult(json);
   }
 
-  /// POST /api/users/logout - invalidates the current token.
+  /// POST /api/users/logout - ends this session. Other sessions stay.
   Future<void> logout() async {
     await _send('POST', '/api/users/logout', body: const {});
     token = null;
   }
 
   AuthResult _authResult(Map<String, dynamic> json) {
-    final t = json['token'];
-    if (t is String && t.isNotEmpty) {
-      token = t;
-      return AuthResult(token: t, id: '${json['id'] ?? ''}', name: '${json['name'] ?? ''}');
-    }
-    return AuthResult(message: '${json['message'] ?? 'Confirmation required.'}');
+    final result = AuthResult.fromJson(json);
+    if (result.token != null) token = result.token;
+    return result;
   }
 
   // ---------------------------------------------------------------- writing
@@ -150,9 +151,10 @@ class ForumsApi {
     return Topic.fromJson(json);
   }
 
-  /// PUT /api/topics/{id} - edit the text of your own topic.
+  /// PUT /api/topics/{id} - edit the text of your own topic. A PUT changes
+  /// only what is sent, so the status stays as it is.
   Future<Topic> updateTopic(int id, {required String body}) async {
-    final json = await _send('PUT', '/api/topics/$id', body: {'body': body, 'status': contentStatus});
+    final json = await _send('PUT', '/api/topics/$id', body: {'body': body});
     return Topic.fromJson(json);
   }
 
@@ -175,7 +177,7 @@ class ForumsApi {
 
   /// PUT /api/comments/{id} - edit your own comment.
   Future<Comment> updateComment(int id, {required String body}) async {
-    final json = await _send('PUT', '/api/comments/$id', body: {'body': body, 'status': contentStatus});
+    final json = await _send('PUT', '/api/comments/$id', body: {'body': body});
     return Comment.fromJson(json);
   }
 
@@ -193,11 +195,10 @@ class ForumsApi {
     return VoteResult.fromJson(json);
   }
 
-  /// DELETE /api/votes/{type}/{id} - take your vote back. Answers the new
-  /// total score like [vote]; taking back a vote you never cast is harmless.
-  Future<VoteResult> removeVote(String type, int id) async {
-    final json = await _send('DELETE', '/api/votes/$type/$id');
-    return VoteResult.fromJson(json);
+  /// DELETE /api/votes/{type}/{id} - take your vote back. Taking back a vote
+  /// you never cast is harmless.
+  Future<void> removeVote(String type, int id) async {
+    await _send('DELETE', '/api/votes/$type/$id');
   }
 
   /// POST /api/reports/type/{type}/{id} - report a `topic` or `comment`.
@@ -211,10 +212,21 @@ class ForumsApi {
 
   // ---------------------------------------------------------------- plumbing
 
-  /// Sends one request and returns the decoded JSON. A JSON array is wrapped
-  /// as `{'_list': [...]}` so every caller gets a Map. Pass
-  /// `authenticated: false` for calls that must not carry the Bearer token
-  /// (login and register).
+  /// Every row of a list, page by page. A list answers
+  /// `{"data": [...], "total": 42, "page": 1, "per_page": 25}`.
+  Future<List<Map<String, dynamic>>> _allRows(String path) async {
+    final rows = <Map<String, dynamic>>[];
+    for (var page = 1;; page++) {
+      final json = await _send('GET', path, query: {'page': '$page', 'per_page': '$_perPage'}, authenticated: false);
+      final data = json['data'] as List? ?? const [];
+      rows.addAll(data.cast<Map<String, dynamic>>());
+      if (data.isEmpty || rows.length >= (json['total'] as num? ?? 0)) return rows;
+    }
+  }
+
+  /// Sends one request and returns the decoded JSON. Pass
+  /// `authenticated: false` for calls that do not carry the Bearer token
+  /// (reads, login and register).
   Future<Map<String, dynamic>> _send(
     String method,
     String path, {
@@ -260,7 +272,6 @@ class ForumsApi {
       }
       throw error;
     }
-    if (decoded is List) return {'_list': decoded};
     if (decoded is Map<String, dynamic>) return decoded;
     return {};
   }

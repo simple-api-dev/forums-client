@@ -35,7 +35,9 @@ POST https://forums.simpleapi.dev/api/forums?apikey=YOUR_KEY
 Authorization: Bearer <token from login or register>
 ```
 
-Reading needs only the key. Writing (forums, topics, comments, votes, reports) also needs a logged-in user, whom you can register inside the app. Users belong to your key, and the API uses the logged-in user as the author, so the client never sends one. Login and register never send the token. If a call made while logged in is answered with a 401 about the token, the app drops it and opens the login screen.
+Reading needs only the key. Writing (forums, topics, comments, votes, reports) also needs a logged-in user, whom you can register inside the app. Users belong to your key, and the API uses the logged-in user as the owner, so the client never sends one. Reads, login and register never send the token. If a call made while logged in is answered with a 401 about the token, the app drops it and opens the login screen.
+
+Register and login answer `{"token": "...", "expires_at": "...", "user": {...}}`. Every list answers `{"data": [...], "total": 42, "page": 1, "per_page": 25}`, and the app reads `data` page by page.
 
 ## Screens and API calls
 
@@ -62,12 +64,13 @@ Get a free key at https://keys.simpleapi.dev/?product=forums. A free key holds 2
 
 ## Good to know
 
-- Writes send `status: Active`. Topic `type` is `Post`, `Video`, `Article` or `Image`. Topic `body` is optional.
-- A vote needs no body. It answers `{"points": <integer>}`, the new total score. `DELETE /api/votes/{type}/{id}` takes a vote back.
+- Creating a forum, topic or comment sends `status: Active`. An edit sends only the new text, because `PUT` changes only the fields sent. Topic `type` is `Post`, `Video`, `Article` or `Image`. Topic `body` is optional.
+- Every item has the `user_id` of its owner, as an integer. That is how the app knows what is yours.
+- A vote needs no body. It answers `{"points": <integer>}`, the new total score. `DELETE /api/votes/{type}/{id}` takes a vote back and answers `{"message": "..."}`.
 - Report types are `Noncompliant`, `Offensive` and `Other`. The sample offers the last two.
 - A reported topic or comment shows a "pending moderation" text until the report is resolved.
-- Logging in again invalidates the earlier token.
-- Errors are `{"message": "..."}`: wrong login `401`, duplicate email `409`, malformed JSON `400`, validation `422`, rate limit `429`. The limit is 60 requests a minute per IP address.
+- A login lasts 30 days. A user can have 20 sessions, and logging in again does not end the others.
+- Errors are `{"message": "..."}`: wrong login `401`, not allowed or a free tier limit `403`, duplicate `409`, malformed JSON `400`, validation `422`, rate limit `429`, a service the API needs is down `503`. The limit is 60 requests a minute per IP address.
 - Registering the email your key belongs to answers `202` and emails a code. The sample shows the message but does not implement that confirm step, so use another address.
 
 ## Project layout

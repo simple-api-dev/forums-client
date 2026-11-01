@@ -60,8 +60,8 @@ class _TopicScreenState extends State<TopicScreen> {
 
   Future<void> _unvote(String type, int id) => _act(() async {
         // DELETE /api/votes/{type}/{id}
-        final r = await api.removeVote(type, id);
-        if (mounted) showSnack(context, 'Vote taken back. The score is now ${r.points}.');
+        await api.removeVote(type, id);
+        if (mounted) showSnack(context, 'Vote taken back.');
       });
 
   Future<void> _report(String type, int id) async {
@@ -151,12 +151,12 @@ class _TopicScreenState extends State<TopicScreen> {
               return ListView(padding: const EdgeInsets.all(16), children: [
                 Text(t.title, style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 4),
-                Text('by user ${t.authorId}', style: Theme.of(context).textTheme.bodySmall),
+                Text('by user ${t.userId}', style: Theme.of(context).textTheme.bodySmall),
                 if (t.body.isNotEmpty) ...[const SizedBox(height: 12), Text(t.body)],
                 _Actions(
                   score: t.score,
                   reported: t.status != 'Active',
-                  mine: state.isMine(t.authorId),
+                  mine: state.isMine(t.userId),
                   onVote: (up) => _vote('topic', t.id, up),
                   onUnvote: () => _unvote('topic', t.id),
                   onEdit: () => _editTopic(t),
@@ -247,12 +247,12 @@ class _CommentTile extends StatelessWidget {
         decoration: BoxDecoration(border: Border(left: BorderSide(color: Theme.of(context).colorScheme.outlineVariant, width: 2))),
         padding: const EdgeInsets.only(left: 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('user ${c.authorId}', style: Theme.of(context).textTheme.bodySmall),
+          Text('user ${c.userId}', style: Theme.of(context).textTheme.bodySmall),
           Text(c.body),
           _Actions(
             score: c.score,
             reported: c.status != 'Active',
-            mine: view.state.isMine(c.authorId),
+            mine: view.state.isMine(c.userId),
             onVote: (up) => view._vote('comment', c.id, up),
             onUnvote: () => view._unvote('comment', c.id),
             onEdit: () => view._editComment(c),

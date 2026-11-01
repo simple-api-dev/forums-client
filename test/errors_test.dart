@@ -20,7 +20,7 @@ void main() {
 
     test('401 for an ended session', () {
       expect(
-        describeError(ApiException(401, 'Invalid auth token. Log in again.', sessionEnded: true)),
+        describeError(ApiException(401, 'Invalid or expired auth token. Log in again.', sessionEnded: true)),
         'Your session has ended. Please log in again.',
       );
     });
@@ -35,6 +35,10 @@ void main() {
     test('404 and 429 have their own wording', () {
       expect(describeError(ApiException(404, 'Topic x not found.')), 'Not found. It may already have been deleted.');
       expect(describeError(ApiException(429, 'Rate limit exceeded')), 'Too many requests. Wait a few seconds and try again.');
+    });
+
+    test('503 is the shared wording', () {
+      expect(describeError(ApiException(503, 'Key service unavailable. Please try again shortly.')), 'The service is busy. Please try again shortly.');
     });
 
     test('anything else does not leak an exception', () {
