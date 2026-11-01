@@ -1,5 +1,5 @@
-name: forums_client_flutter
-description: "Sample Flutter web app for the SimpleApi Forums API"
+name: forums_client
+description: "Sample Flutter web app for the free SimpleAPI Forums API."
 publish_to: 'none'
 version: 1.0.0+1
 

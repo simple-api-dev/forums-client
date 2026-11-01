@@ -13,8 +13,8 @@ class ForumsApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SimpleApi Forums sample',
-      theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
+      title: 'SimpleAPI Forums sample',
+      theme: ThemeData(colorSchemeSeed: const Color(0xFF0066CC), useMaterial3: true),
       // The app opens straight on content. A new keyVersion rebuilds the list
       // so it reloads when the key changes.
       home: ListenableBuilder(

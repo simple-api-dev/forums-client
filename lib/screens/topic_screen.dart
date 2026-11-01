@@ -51,7 +51,7 @@ class _TopicScreenState extends State<TopicScreen> {
       await call();
       if (mounted) setState(_load);
     } catch (e) {
-      if (mounted) showSnack(context, describeError(e));
+      if (mounted) showError(context, state, e);
     }
   }
 
@@ -99,7 +99,7 @@ class _TopicScreenState extends State<TopicScreen> {
       await api.deleteTopic(t.id);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) showSnack(context, describeError(e));
+      if (mounted) showError(context, state, e);
     }
   }
 

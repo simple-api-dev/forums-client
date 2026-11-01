@@ -2,9 +2,10 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forums_client_flutter/app.dart';
-import 'package:forums_client_flutter/app_state.dart';
-import 'package:forums_client_flutter/key_store.dart';
+import 'package:forums_client/app.dart';
+import 'package:forums_client/app_state.dart';
+import 'package:forums_client/key_store.dart';
+import 'package:forums_client/screens/ui.dart' show demoFullMessage, demoNotice;
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -85,14 +86,13 @@ void main() {
       expect(opened, ['https://keys.simpleapi.dev/?product=forums']);
     });
 
-    testWidgets('a 401 shows a friendly sentence with the API message and a retry button', (tester) async {
+    testWidgets('a 401 about the key says so plainly and offers a retry button', (tester) async {
       await pumpApp(
         tester,
         store: MemoryKeyStore('bad'),
         server: router({'GET /api/forums': (_) => json({'message': 'Request failed.  API Key not found.'}, 401)}),
       );
-      expect(find.textContaining('did not accept the key'), findsOneWidget);
-      expect(find.textContaining('API Key not found'), findsOneWidget);
+      expect(find.text('The API key was not accepted. Check it under Settings.'), findsOneWidget);
       expect(find.text('Try again'), findsOneWidget);
     });
 
@@ -102,7 +102,7 @@ void main() {
         buildKey: 'k',
         server: router({'GET /api/forums': (_) => json({'message': 'Throttle Limit Exceeded'}, 429)}),
       );
-      expect(find.textContaining('Too many requests (429)'), findsOneWidget);
+      expect(find.text('Too many requests. Wait a few seconds and try again.'), findsOneWidget);
     });
   });
 
@@ -142,15 +142,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(store.read(), isNull);
-      expect(find.textContaining('API Key not found'), findsOneWidget);
+      expect(find.text('The API key was not accepted. Check it under Settings.'), findsOneWidget);
     });
 
-    testWidgets('"Go back to the demo key" forgets the saved key', (tester) async {
+    testWidgets('"Remove my key" forgets the saved key', (tester) async {
       final store = MemoryKeyStore('own-key');
       final app = await pumpApp(tester, store: store, buildKey: 'build-key', server: router({'GET /api/forums': (_) => json([])}));
 
       await openSettings(tester);
-      await tester.tap(find.text('Go back to the demo key'));
+      await tester.tap(find.text('Remove my key'));
       await tester.pumpAndSettle();
 
       expect(store.read(), isNull);
@@ -197,7 +197,60 @@ void main() {
       expect(jsonDecode(post.body), {'title': 'Probe forum', 'status': 'Active'});
       expect(jsonDecode(post.body), isNot(contains('author_id')));
       expect(find.text('Probe forum'), findsOneWidget);
-      expect(find.text('Jane'), findsOneWidget);
+      expect(find.text('Hi, Jane'), findsOneWidget);
+    });
+
+    testWidgets('a 401 about the login on a write ends the session and opens the log in screen', (tester) async {
+      final app = await pumpApp(
+        tester,
+        buildKey: 'k',
+        loggedInAs: '8',
+        server: router({
+          'GET /api/forums': (_) => json([forumJson]),
+          'POST /api/forums': (_) => json({'message': 'Invalid auth token. Log in again.'}, 401),
+        }),
+      );
+      await tester.tap(find.text('New forum'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Title'), 'Another forum');
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      expect(app.state.loggedIn, isFalse);
+      expect(find.widgetWithText(AppBar, 'Log in'), findsOneWidget);
+      expect(find.text('Your session has ended. Please log in again.'), findsOneWidget);
+    });
+
+    testWidgets('the register form warns that demo accounts are public, and a full demo says so', (tester) async {
+      await pumpApp(
+        tester,
+        buildKey: 'k',
+        server: router({
+          'GET /api/forums': (_) => json([]),
+          'POST /api/users/register': (_) => json({'message': 'Maximum number of user accounts (25) per developer account has been reached.'}, 403),
+        }),
+      );
+      await tester.tap(find.text('Log in / Register'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Create an account'));
+      await tester.pumpAndSettle();
+      expect(find.text(demoNotice), findsOneWidget);
+      expect(find.text('At least 8 characters'), findsOneWidget);
+
+      final fields = find.byType(TextField);
+      await tester.enterText(fields.at(0), 'Jane');
+      await tester.enterText(fields.at(1), 'demo-user@example.invalid');
+      await tester.enterText(fields.at(2), 'not-a-real-password');
+      await tester.tap(find.widgetWithText(FilledButton, 'Register'));
+      await tester.pumpAndSettle();
+      expect(find.text(demoFullMessage), findsOneWidget);
+    });
+
+    testWidgets('with your own key there is no demo warning', (tester) async {
+      await pumpApp(tester, store: MemoryKeyStore('own'), server: router({'GET /api/forums': (_) => json([])}));
+      await tester.tap(find.text('Log in / Register'));
+      await tester.pumpAndSettle();
+      expect(find.text(demoNotice), findsNothing);
     });
 
     testWidgets('a wrong password shows the API\'s 401 message on the form', (tester) async {
@@ -209,7 +262,7 @@ void main() {
           'POST /api/users/login': (_) => json({'message': 'Invalid email or password.'}, 401),
         }),
       );
-      await tester.tap(find.text('Log in'));
+      await tester.tap(find.text('Log in / Register'));
       await tester.pumpAndSettle();
       await tester.enterText(find.widgetWithText(TextField, 'Email'), 'demo-user@example.invalid');
       await tester.enterText(find.widgetWithText(TextField, 'Password'), 'wrong');
@@ -217,7 +270,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Invalid email or password.'), findsOneWidget);
-      expect(find.textContaining('did not accept the key'), findsNothing);
+      expect(find.textContaining('API key was not accepted'), findsNothing);
     });
 
     testWidgets('logging out calls the API and shows Log in again', (tester) async {
@@ -233,7 +286,8 @@ void main() {
       expect(app.seen.last.url.path, '/api/users/logout');
       expect(app.seen.last.headers['Authorization'], 'Bearer tok');
       expect(app.state.loggedIn, isFalse);
-      expect(find.text('Log in'), findsOneWidget);
+      expect(find.text('Log in / Register'), findsOneWidget);
+      expect(find.text('Logged out.'), findsNothing);
     });
 
     testWidgets('a forum title with accents and symbols is sent as typed', (tester) async {
@@ -487,7 +541,7 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Text'), 'changed');
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('not allowed to do that (403)'), findsOneWidget);
+      expect(find.text("Only the comment's author, a moderator or an admin can change this comment."), findsOneWidget);
     });
 
     testWidgets('deletes own comment after confirming', (tester) async {
@@ -546,7 +600,7 @@ void main() {
 
     testWidgets('an unknown topic shows the 404 and a retry button', (tester) async {
       await openTopic(tester, extra: {'GET /api/topics/hello_topic': (_) => json({'message': 'Topic hello_topic not found.'}, 404)});
-      expect(find.textContaining('Not found (404)'), findsOneWidget);
+      expect(find.text('Not found. It may already have been deleted.'), findsOneWidget);
       expect(find.text('Try again'), findsOneWidget);
     });
   });

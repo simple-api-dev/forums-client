@@ -50,7 +50,7 @@ class _ForumsScreenState extends State<ForumsScreen> {
       if (!mounted) return;
       setState(_load);
     } catch (e) {
-      if (mounted) showSnack(context, describeError(e));
+      if (mounted) showError(context, state, e);
     }
   }
 
@@ -89,9 +89,9 @@ class _ForumsScreenState extends State<ForumsScreen> {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             const Text('This demo has no key configured', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            const Text('Get a free key and paste it in Settings.', textAlign: TextAlign.center),
+            const Text('Get a free key, then paste it under Settings.', textAlign: TextAlign.center),
             const SizedBox(height: 12),
-            TextButton(onPressed: () => widget.openUrl(getKeyUrl), child: const Text('Get a free key')),
+            FilledButton(onPressed: () => widget.openUrl(getKeyUrl), child: const Text('Get a free key')),
           ]),
         ),
       );

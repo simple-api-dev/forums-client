@@ -48,7 +48,7 @@ class _ForumScreenState extends State<ForumScreen> {
       await state.api.createTopic(widget.forum.id, title: result.title, body: result.body);
       if (mounted) setState(_load);
     } catch (e) {
-      if (mounted) showSnack(context, describeError(e));
+      if (mounted) showError(context, state, e);
     }
   }
 
@@ -59,7 +59,7 @@ class _ForumScreenState extends State<ForumScreen> {
       await state.api.deleteForum(widget.forum.id);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) showSnack(context, describeError(e));
+      if (mounted) showError(context, state, e);
     }
   }
 

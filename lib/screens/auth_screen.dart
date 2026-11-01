@@ -50,8 +50,9 @@ class _AuthScreenState extends State<AuthScreen> {
       widget.state.loggedInAs(name: result.name.isEmpty ? 'you' : result.name, id: result.id);
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (e) {
-      // A failed login is a 401 whose message ("Invalid email or password.") is all the user needs.
-      if (mounted) setState(() => _error = e.statusCode == 401 && !_register ? e.message : describeError(e));
+      // A full demo key answers 403 on register; every other message comes from describeError.
+      final demoFull = _register && e.statusCode == 403 && !widget.state.usingOwnKey;
+      if (mounted) setState(() => _error = demoFull ? demoFullMessage : describeError(e));
     } catch (e) {
       if (mounted) setState(() => _error = describeError(e));
     } finally {
@@ -78,9 +79,15 @@ class _AuthScreenState extends State<AuthScreen> {
           TextField(
             controller: _password,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: 'Password',
+              border: const OutlineInputBorder(),
+              helperText: _register ? 'At least 8 characters' : null,
+            ),
             onSubmitted: (_) => _submit(),
           ),
+          if (!widget.state.usingOwnKey)
+            const Padding(padding: EdgeInsets.only(top: 12), child: Text(demoNotice)),
           if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
           const SizedBox(height: 16),
           Row(children: [
