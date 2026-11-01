@@ -1,12 +1,15 @@
 /// Plain data classes for the Forums API responses.
 ///
 /// Parsing is deliberately forgiving (missing fields fall back to defaults) so
-/// a small change in the API does not crash the sample. Note that the API only
-/// sends the owner's `user_id`, never a name.
+/// a small change in the API does not crash the sample. The owner's `user_id`
+/// says what is yours; `author` is the name to show.
 library;
 
 int _int(Object? v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
 String _str(Object? v) => v == null ? '' : '$v';
+
+/// `author` is a name or null, and a blank name counts as none.
+String? _name(Object? v) => v is String && v.trim().isNotEmpty ? v : null;
 
 class Forum {
   const Forum({
@@ -47,6 +50,7 @@ class Topic {
     required this.type,
     required this.status,
     required this.userId,
+    required this.author,
     required this.score,
     required this.updatedAt,
     this.comments = const [],
@@ -61,6 +65,7 @@ class Topic {
         type: _str(j['type']),
         status: _str(j['status']),
         userId: _int(j['user_id']),
+        author: _name(j['author']),
         score: _int(j['score']),
         updatedAt: _str(j['updated_at']),
         comments: Comment.listFrom(j['comments']),
@@ -76,6 +81,7 @@ class Topic {
   final String type;
   final String status;
   final int userId;
+  final String? author;
   final int score;
   final String updatedAt;
 
@@ -90,6 +96,7 @@ class Comment {
     required this.body,
     required this.status,
     required this.userId,
+    required this.author,
     required this.score,
     required this.updatedAt,
     this.replies = const [],
@@ -100,6 +107,7 @@ class Comment {
         body: _str(j['body']),
         status: _str(j['status']),
         userId: _int(j['user_id']),
+        author: _name(j['author']),
         score: _int(j['score']),
         updatedAt: _str(j['updated_at']),
         // A comment's replies come back under the key `comments`.
@@ -113,6 +121,7 @@ class Comment {
   final String body;
   final String status;
   final int userId;
+  final String? author;
   final int score;
   final String updatedAt;
   final List<Comment> replies;

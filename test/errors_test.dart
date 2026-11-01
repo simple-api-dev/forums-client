@@ -28,6 +28,7 @@ void main() {
     test('401 on login, 403, 409 and 422 show the API message', () {
       expect(describeError(ApiException(401, 'Invalid email or password.')), 'Invalid email or password.');
       expect(describeError(ApiException(403, 'Only the forum author can do that.')), 'Only the forum author can do that.');
+      expect(describeError(ApiException(403, 'The demo account cannot be changed.')), 'The demo account cannot be changed.');
       expect(describeError(ApiException(409, 'Email already registered.')), 'Email already registered.');
       expect(describeError(ApiException(422, 'The title field is required.')), 'The title field is required.');
     });

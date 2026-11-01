@@ -46,7 +46,7 @@ Register and login answer `{"token": "...", "expires_at": "...", "user": {...}}`
 | **Forums** (`forums_screen.dart`) | The landing screen. The back arrow returns to simpleapi.dev. Lists the forums of the key, or an empty state. **New forum** asks you to log in first. | `GET /api/forums`, `POST /api/forums` |
 | **Log in / Register** (`auth_screen.dart`) | Get a token. Opened when you try to write or vote. **Try the demo account** logs in as the shared demo user in one click. **Log out** is in the app bar. | `POST /api/users/register`, `POST /api/users/login`, `POST /api/users/logout` |
 | **Forum** (`forum_screen.dart`) | The topics of one forum, start a topic, and delete the forum if you made it. | `GET /api/forums/{slug}/topics`, `POST /api/forums/{id}/topics`, `DELETE /api/forums/{id}` |
-| **Topic** (`topic_screen.dart`) | A topic with its whole comment tree, with replies indented. Comment, reply, vote, edit and delete your own, and report anything. | `GET /api/topics/{slug}`, `POST /api/comments/type/topic/{id}`, `POST /api/comments/type/comment/{id}`, `PUT /api/topics/{id}`, `PUT /api/comments/{id}`, `DELETE /api/topics/{id}`, `DELETE /api/comments/{id}`, `POST /api/votes/up/{type}/{id}`, `POST /api/votes/down/{type}/{id}`, `DELETE /api/votes/{type}/{id}`, `POST /api/reports/type/{type}/{id}` |
+| **Topic** (`topic_screen.dart`) | A topic with its whole comment tree, with replies indented and each one's author. Comment, reply, vote, edit and delete your own, and report anything. | `GET /api/topics/{slug}`, `POST /api/comments/type/topic/{id}`, `POST /api/comments/type/comment/{id}`, `PUT /api/topics/{id}`, `PUT /api/comments/{id}`, `DELETE /api/topics/{id}`, `DELETE /api/comments/{id}`, `POST /api/votes/up/{type}/{id}`, `POST /api/votes/down/{type}/{id}`, `DELETE /api/votes/{type}/{id}`, `POST /api/reports/type/{type}/{id}` |
 
 Not in this sample: moderator tools, rules, tags, search, and the admin flows. See the [full docs](https://forums.simpleapi.dev/docs).
 
@@ -66,6 +66,7 @@ Get a free key at https://keys.simpleapi.dev/?product=forums. A free key holds 2
 
 - Creating a forum, topic or comment sends `status: Active`. An edit sends only the new text, because `PUT` changes only the fields sent. Topic `type` is `Post`, `Video`, `Article` or `Image`. Topic `body` is optional.
 - Every item has the `user_id` of its owner, as an integer. That is how the app knows what is yours.
+- Topics and comments also have `author`, the writer's name, or `null` if there is none. The app shows `by <author>`, or `by Unknown`.
 - A vote needs no body. It answers `{"points": <integer>}`, the new total score. `DELETE /api/votes/{type}/{id}` takes a vote back and answers `{"message": "..."}`.
 - Report types are `Noncompliant`, `Offensive` and `Other`. The sample offers the last two.
 - A reported topic or comment shows a "pending moderation" text until the report is resolved.
