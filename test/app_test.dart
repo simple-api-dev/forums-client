@@ -8,7 +8,7 @@ import 'package:forums_client/screens/ui.dart' show demoEmail, demoFullMessage, 
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import 'forums_api_test.dart' show forumJson, topicJson, topicWithTree;
+import 'forums_api_test.dart' show forumJson, page, session, topicJson, topicWithTree;
 
 http.Response json(Object body, [int status = 200]) =>
     http.Response(jsonEncode(body), status, headers: {'content-type': 'application/json'});
@@ -24,7 +24,7 @@ typedef Server = http.Response Function(http.Request);
 Future<({AppState state, List<http.Request> seen})> pumpApp(
   WidgetTester tester, {
   String buildKey = 'k',
-  String? loggedInAs,
+  int? loggedInAs,
   required Server server,
 }) async {
   tester.view.physicalSize = const Size(1000, 1800);
@@ -55,7 +55,7 @@ Server router(Map<String, Server> routes) => (r) {
 void main() {
   group('landing', () {
     testWidgets('the back arrow opens simpleapi.dev and is the first item of the app bar', (tester) async {
-      await pumpApp(tester, server: router({'GET /api/forums': (_) => json([])}));
+      await pumpApp(tester, server: router({'GET /api/forums': (_) => page([])}));
       final arrow = find.byTooltip('Back to SimpleAPI');
       expect(arrow, findsOneWidget);
       expect(tester.getTopLeft(arrow).dx, lessThan(tester.getTopLeft(find.text('SimpleAPI Forums')).dx));
@@ -68,7 +68,7 @@ void main() {
     // width was checked by hand in Chromium (see the pull request).
     for (final loggedIn in [false, true]) {
       testWidgets('at 360px wide the app bar lays out without overflow (logged in: $loggedIn)', (tester) async {
-        await pumpApp(tester, loggedInAs: loggedIn ? '8' : null, server: router({'GET /api/forums': (_) => json([forumJson])}));
+        await pumpApp(tester, loggedInAs: loggedIn ? 8 : null, server: router({'GET /api/forums': (_) => page([forumJson])}));
         tester.view.physicalSize = const Size(360, 640);
         await tester.pumpAndSettle();
         expect(find.text('SimpleAPI Forums'), findsOneWidget);
@@ -80,14 +80,14 @@ void main() {
     }
 
     testWidgets('opens straight on the forum list using the build-time key', (tester) async {
-      final app = await pumpApp(tester, buildKey: 'build-key', server: router({'GET /api/forums': (_) => json([forumJson])}));
+      final app = await pumpApp(tester, buildKey: 'build-key', server: router({'GET /api/forums': (_) => page([forumJson])}));
 
       expect(find.text('Probe forum'), findsOneWidget);
       expect(app.seen.single.url.queryParameters['apikey'], 'build-key');
     });
 
     testWidgets('a key with no forums shows a friendly empty state', (tester) async {
-      await pumpApp(tester, buildKey: 'k', server: router({'GET /api/forums': (_) => http.Response('[]', 200)}));
+      await pumpApp(tester, buildKey: 'k', server: router({'GET /api/forums': (_) => page([])}));
 
       expect(find.text('No forums yet'), findsOneWidget);
       expect(find.text('Create the first forum'), findsOneWidget);
@@ -120,8 +120,8 @@ void main() {
         tester,
         buildKey: 'k',
         server: router({
-          'GET /api/forums': (_) => json(forums),
-          'POST /api/users/register': (_) => json({'name': 'Jane', 'enabled': true, 'token': 'tok-9', 'admin': false, 'id': 8}, 201),
+          'GET /api/forums': (_) => page(forums),
+          'POST /api/users/register': (_) => session('tok-9', status: 201),
           'POST /api/forums': (r) {
             forums = [forumJson];
             return json(forumJson);
@@ -150,7 +150,7 @@ void main() {
       final post = app.seen.firstWhere((r) => r.method == 'POST' && r.url.path == '/api/forums');
       expect(post.headers['Authorization'], 'Bearer tok-9');
       expect(jsonDecode(post.body), {'title': 'Probe forum', 'status': 'Active'});
-      expect(jsonDecode(post.body), isNot(contains('author_id')));
+      expect(jsonDecode(post.body), isNot(contains('user_id')));
       expect(find.text('Probe forum'), findsOneWidget);
       expect(find.byTooltip('Logged in as Jane'), findsOneWidget);
     });
@@ -159,9 +159,9 @@ void main() {
       final app = await pumpApp(
         tester,
         buildKey: 'k',
-        loggedInAs: '8',
+        loggedInAs: 8,
         server: router({
-          'GET /api/forums': (_) => json([forumJson]),
+          'GET /api/forums': (_) => page([forumJson]),
           'POST /api/forums': (_) => json({'message': 'Invalid auth token. Log in again.'}, 401),
         }),
       );
@@ -181,7 +181,7 @@ void main() {
         tester,
         buildKey: 'k',
         server: router({
-          'GET /api/forums': (_) => json([]),
+          'GET /api/forums': (_) => page([]),
           'POST /api/users/register': (_) => json({'message': 'Maximum number of user accounts (25) per developer account has been reached.'}, 403),
         }),
       );
@@ -203,7 +203,7 @@ void main() {
     });
 
     testWidgets('the login form shows the demo notice and no key field', (tester) async {
-      await pumpApp(tester, server: router({'GET /api/forums': (_) => json([])}));
+      await pumpApp(tester, server: router({'GET /api/forums': (_) => page([])}));
       await tester.tap(find.widgetWithText(TextButton, 'Log in'));
       await tester.pumpAndSettle();
       expect(find.text(demoNotice), findsOneWidget);
@@ -216,8 +216,8 @@ void main() {
       final app = await pumpApp(
         tester,
         server: router({
-          'GET /api/forums': (_) => json([forumJson]),
-          'POST /api/users/login': (_) => json({'name': 'Demo User', 'enabled': true, 'token': 'tok-d', 'admin': false, 'id': 5}),
+          'GET /api/forums': (_) => page([forumJson]),
+          'POST /api/users/login': (_) => session('tok-d', name: 'Demo User', id: 5),
         }),
       );
       await tester.tap(find.widgetWithText(TextButton, 'Log in'));
@@ -231,13 +231,13 @@ void main() {
       expect(demoPassword, 'try-the-demo');
       expect(login.headers['Authorization'], isNull);
       expect(app.state.loggedIn, isTrue);
-      expect(app.state.userId, '5');
+      expect(app.state.userId, 5);
       expect(find.byTooltip('Logged in as Demo User'), findsOneWidget);
       expect(find.text('Probe forum'), findsOneWidget);
     });
 
     testWidgets('the register form also shows the demo notice and the demo button', (tester) async {
-      await pumpApp(tester, server: router({'GET /api/forums': (_) => json([])}));
+      await pumpApp(tester, server: router({'GET /api/forums': (_) => page([])}));
       await tester.tap(find.widgetWithText(TextButton, 'Log in'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Create an account'));
@@ -249,7 +249,7 @@ void main() {
     testWidgets('a failed demo login shows the API message', (tester) async {
       await pumpApp(
         tester,
-        server: router({'GET /api/forums': (_) => json([]), 'POST /api/users/login': (_) => json({'message': 'Invalid email or password.'}, 401)}),
+        server: router({'GET /api/forums': (_) => page([]), 'POST /api/users/login': (_) => json({'message': 'Invalid email or password.'}, 401)}),
       );
       await tester.tap(find.widgetWithText(TextButton, 'Log in'));
       await tester.pumpAndSettle();
@@ -263,7 +263,7 @@ void main() {
         tester,
         buildKey: 'k',
         server: router({
-          'GET /api/forums': (_) => json([]),
+          'GET /api/forums': (_) => page([]),
           'POST /api/users/login': (_) => json({'message': 'Invalid email or password.'}, 401),
         }),
       );
@@ -282,8 +282,8 @@ void main() {
       final app = await pumpApp(
         tester,
         buildKey: 'k',
-        loggedInAs: '8',
-        server: router({'GET /api/forums': (_) => json([]), 'POST /api/users/logout': (_) => http.Response('true', 200)}),
+        loggedInAs: 8,
+        server: router({'GET /api/forums': (_) => page([]), 'POST /api/users/logout': (_) => json({'message': 'Logged out.'})}),
       );
       await tester.tap(find.text('Log out'));
       await tester.pumpAndSettle();
@@ -299,8 +299,8 @@ void main() {
       final app = await pumpApp(
         tester,
         buildKey: 'k',
-        loggedInAs: '8',
-        server: router({'GET /api/forums': (_) => json([]), 'POST /api/forums': (_) => json({...forumJson, 'title': 'Café au lait?', 'slug': 'cafe_au_lait'})}),
+        loggedInAs: 8,
+        server: router({'GET /api/forums': (_) => page([]), 'POST /api/forums': (_) => json({...forumJson, 'title': 'Café au lait?', 'slug': 'cafe_au_lait'})}),
       );
       await tester.tap(find.text('Create the first forum'));
       await tester.pumpAndSettle();
@@ -316,8 +316,8 @@ void main() {
 
   group('topics', () {
     final routes = <String, Server>{
-      'GET /api/forums': (_) => json([forumJson]),
-      'GET /api/forums/probe_forum/topics': (_) => json([topicJson]),
+      'GET /api/forums': (_) => page([forumJson]),
+      'GET /api/forums/probe_forum/topics': (_) => page([topicJson]),
     };
 
     testWidgets('a forum lists its topics', (tester) async {
@@ -333,7 +333,7 @@ void main() {
       final app = await pumpApp(
         tester,
         buildKey: 'k',
-        loggedInAs: '8',
+        loggedInAs: 8,
         server: router({...routes, 'POST /api/forums/10/topics': (_) => json(topicJson)}),
       );
       await tester.tap(find.text('Probe forum'));
@@ -357,7 +357,7 @@ void main() {
       final app = await pumpApp(
         tester,
         buildKey: 'k',
-        loggedInAs: '8',
+        loggedInAs: 8,
         server: router({...routes, 'POST /api/forums/10/topics': (_) => json(topicJson)}),
       );
       await tester.tap(find.text('Probe forum'));
@@ -373,14 +373,14 @@ void main() {
     });
 
     testWidgets('an empty forum invites the first topic', (tester) async {
-      await pumpApp(tester, buildKey: 'k', server: router({...routes, 'GET /api/forums/probe_forum/topics': (_) => json([])}));
+      await pumpApp(tester, buildKey: 'k', server: router({...routes, 'GET /api/forums/probe_forum/topics': (_) => page([])}));
       await tester.tap(find.text('Probe forum'));
       await tester.pumpAndSettle();
       expect(find.text('No topics yet'), findsOneWidget);
     });
 
     testWidgets('only the forum author sees Delete forum', (tester) async {
-      await pumpApp(tester, buildKey: 'k', loggedInAs: '99', server: router(routes));
+      await pumpApp(tester, buildKey: 'k', loggedInAs: 99, server: router(routes));
       await tester.tap(find.text('Probe forum'));
       await tester.pumpAndSettle();
       expect(find.byTooltip('Delete forum'), findsNothing);
@@ -391,10 +391,10 @@ void main() {
       final app = await pumpApp(
         tester,
         buildKey: 'k',
-        loggedInAs: '8',
+        loggedInAs: 8,
         server: router({
           ...routes,
-          'GET /api/forums': (_) => json(deleted ? [] : [forumJson]),
+          'GET /api/forums': (_) => page(deleted ? [] : [forumJson]),
           'DELETE /api/forums/10': (_) {
             deleted = true;
             return json({'message': 'Forum deleted (10)'});
@@ -415,13 +415,13 @@ void main() {
 
   group('topic page', () {
     Map<String, Server> topicRoutes([Map<String, Server> extra = const {}]) => {
-          'GET /api/forums': (_) => json([forumJson]),
-          'GET /api/forums/probe_forum/topics': (_) => json([topicJson]),
+          'GET /api/forums': (_) => page([forumJson]),
+          'GET /api/forums/probe_forum/topics': (_) => page([topicJson]),
           'GET /api/topics/hello_topic': (_) => json(topicWithTree),
           ...extra,
         };
 
-    Future<({AppState state, List<http.Request> seen})> openTopic(WidgetTester tester, {String? loggedInAs, Map<String, Server> extra = const {}}) async {
+    Future<({AppState state, List<http.Request> seen})> openTopic(WidgetTester tester, {int? loggedInAs, Map<String, Server> extra = const {}}) async {
       final app = await pumpApp(tester, buildKey: 'k', loggedInAs: loggedInAs, server: router(topicRoutes(extra)));
       await tester.tap(find.text('Probe forum'));
       await tester.pumpAndSettle();
@@ -449,7 +449,7 @@ void main() {
     });
 
     testWidgets('edit and delete show only on your own content', (tester) async {
-      await openTopic(tester, loggedInAs: '8'); // wrote the topic, the top comment and the 3rd level
+      await openTopic(tester, loggedInAs: 8); // wrote the topic, the top comment and the 3rd level
       // Own: topic + comment 320 + comment 322 -> 3 Edit buttons; comment 321 is user 9's.
       expect(find.text('Edit'), findsNWidgets(3));
       expect(find.text('Delete'), findsNWidgets(3));
@@ -471,7 +471,7 @@ void main() {
     });
 
     testWidgets('upvote posts without a body and reloads the topic', (tester) async {
-      final app = await openTopic(tester, loggedInAs: '77', extra: {'POST /api/votes/up/topic/48': (_) => json({'points': 1})});
+      final app = await openTopic(tester, loggedInAs: 77, extra: {'POST /api/votes/up/topic/48': (_) => json({'points': 1})});
       await tester.tap(find.byTooltip('Upvote').first);
       await tester.pumpAndSettle();
 
@@ -483,14 +483,14 @@ void main() {
     });
 
     testWidgets('downvoting a comment uses the comment type', (tester) async {
-      final app = await openTopic(tester, loggedInAs: '77', extra: {'POST /api/votes/down/comment/320': (_) => json({'points': -1})});
+      final app = await openTopic(tester, loggedInAs: 77, extra: {'POST /api/votes/down/comment/320': (_) => json({'points': -1})});
       await tester.tap(find.byTooltip('Downvote').at(1)); // [0] is the topic
       await tester.pumpAndSettle();
       expect(app.seen.any((r) => r.url.path == '/api/votes/down/comment/320'), isTrue);
     });
 
     testWidgets('a vote is taken back with DELETE and the topic reloads', (tester) async {
-      final app = await openTopic(tester, loggedInAs: '77', extra: {'DELETE /api/votes/topic/48': (_) => json({'points': 0})});
+      final app = await openTopic(tester, loggedInAs: 77, extra: {'DELETE /api/votes/topic/48': (_) => json({'message': 'Vote removed.'})});
       await tester.tap(find.byTooltip('Take back my vote').first);
       await tester.pumpAndSettle();
 
@@ -502,7 +502,7 @@ void main() {
     });
 
     testWidgets('adds a top-level comment', (tester) async {
-      final app = await openTopic(tester, loggedInAs: '77', extra: {'POST /api/comments/type/topic/48': (_) => json({'id': 400, 'body': 'hi'})});
+      final app = await openTopic(tester, loggedInAs: 77, extra: {'POST /api/comments/type/topic/48': (_) => json({'id': 400, 'body': 'hi'})});
       await tester.enterText(find.widgetWithText(TextField, 'Add a comment'), 'hi there');
       await tester.tap(find.text('Comment'));
       await tester.pumpAndSettle();
@@ -513,7 +513,7 @@ void main() {
     });
 
     testWidgets('replies to a comment', (tester) async {
-      final app = await openTopic(tester, loggedInAs: '77', extra: {'POST /api/comments/type/comment/320': (_) => json({'id': 401, 'body': 'r'})});
+      final app = await openTopic(tester, loggedInAs: 77, extra: {'POST /api/comments/type/comment/320': (_) => json({'id': 401, 'body': 'r'})});
       await tester.tap(find.text('Reply').first);
       await tester.pumpAndSettle();
       await tester.enterText(find.widgetWithText(TextField, 'Your reply'), 'my reply');
@@ -526,7 +526,7 @@ void main() {
     });
 
     testWidgets('edits own topic text', (tester) async {
-      final app = await openTopic(tester, loggedInAs: '8', extra: {'PUT /api/topics/48': (_) => json(topicJson)});
+      final app = await openTopic(tester, loggedInAs: 8, extra: {'PUT /api/topics/48': (_) => json(topicJson)});
       await tester.tap(find.text('Edit').first);
       await tester.pumpAndSettle();
       await tester.enterText(find.widgetWithText(TextField, 'Text'), 'changed');
@@ -534,11 +534,11 @@ void main() {
       await tester.pumpAndSettle();
 
       final put = app.seen.firstWhere((r) => r.method == 'PUT');
-      expect(jsonDecode(put.body), {'body': 'changed', 'status': 'Active'});
+      expect(jsonDecode(put.body), {'body': 'changed'});
     });
 
     testWidgets('a 403 on edit is explained', (tester) async {
-      await openTopic(tester, loggedInAs: '8', extra: {
+      await openTopic(tester, loggedInAs: 8, extra: {
         'PUT /api/comments/320': (_) => json({'message': "Only the comment's author, a moderator or an admin can change this comment."}, 403),
       });
       await tester.tap(find.text('Edit').at(1)); // comment 320
@@ -550,7 +550,7 @@ void main() {
     });
 
     testWidgets('deletes own comment after confirming', (tester) async {
-      final app = await openTopic(tester, loggedInAs: '8', extra: {'DELETE /api/comments/320': (_) => json({'message': 'Comment deleted (320)'})});
+      final app = await openTopic(tester, loggedInAs: 8, extra: {'DELETE /api/comments/320': (_) => json({'message': 'Comment deleted (320)'})});
       await tester.tap(find.text('Delete').at(1));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
@@ -559,7 +559,7 @@ void main() {
     });
 
     testWidgets('deleting the topic returns to the forum', (tester) async {
-      final app = await openTopic(tester, loggedInAs: '8', extra: {'DELETE /api/topics/48': (_) => json({'message': 'Topic deleted (48)'})});
+      final app = await openTopic(tester, loggedInAs: 8, extra: {'DELETE /api/topics/48': (_) => json({'message': 'Topic deleted (48)'})});
       await tester.tap(find.text('Delete').first);
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
@@ -569,7 +569,7 @@ void main() {
     });
 
     testWidgets('reports a topic, choosing the reason', (tester) async {
-      final app = await openTopic(tester, loggedInAs: '77', extra: {'POST /api/reports/type/topic/48': (_) => json({'type': 'Offensive', 'id': 26})});
+      final app = await openTopic(tester, loggedInAs: 77, extra: {'POST /api/reports/type/topic/48': (_) => json({'type': 'Offensive', 'id': 26})});
       await tester.tap(find.text('Report').first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Offensive'));
@@ -581,7 +581,7 @@ void main() {
     });
 
     testWidgets('reporting twice shows the 409 message', (tester) async {
-      await openTopic(tester, loggedInAs: '77', extra: {
+      await openTopic(tester, loggedInAs: 77, extra: {
         'POST /api/reports/type/topic/48': (_) => json({'message': 'You have already reported this topic.'}, 409),
       });
       await tester.tap(find.text('Report').first);

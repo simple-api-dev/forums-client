@@ -17,14 +17,14 @@ class AppState extends ChangeNotifier {
   late final ForumsApi api;
   String? userName;
 
-  /// The logged-in user's id. The API reports authors as `author_id`, so this
+  /// The logged-in user's id. The API reports owners as `user_id`, so this
   /// is how the app knows which content is "yours".
-  String? userId;
+  int? userId;
 
   bool get loggedIn => api.token != null;
 
-  /// True when [authorId] (from the API) is the logged-in user.
-  bool isMine(String authorId) => loggedIn && userId != null && userId == authorId;
+  /// True when [ownerId] (a `user_id` from the API) is the logged-in user.
+  bool isMine(int ownerId) => loggedIn && userId != null && userId == ownerId;
 
   /// The API said the login token no longer works: forget the user so the
   /// app bar offers Log in again.
@@ -34,7 +34,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void loggedInAs({required String name, required String id}) {
+  void loggedInAs({required String name, required int id}) {
     userName = name;
     userId = id;
     notifyListeners();

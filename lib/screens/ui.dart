@@ -27,6 +27,8 @@ String describeError(Object e) {
       return 'Not found. It may already have been deleted.';
     case 429:
       return 'Too many requests. Wait a few seconds and try again.';
+    case 503:
+      return 'The service is busy. Please try again shortly.';
     default:
       return e.message;
   }

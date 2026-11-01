@@ -68,7 +68,7 @@ class _ForumScreenState extends State<ForumScreen> {
         appBar: AppBar(
           title: Text(widget.forum.title),
           actions: [
-            if (state.isMine(widget.forum.authorId))
+            if (state.isMine(widget.forum.userId))
               IconButton(tooltip: 'Delete forum', onPressed: _deleteForum, icon: const Icon(Icons.delete_outline)),
             ...accountActions(context, state),
           ],
