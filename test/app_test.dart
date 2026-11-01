@@ -99,7 +99,7 @@ void main() {
         buildKey: 'bad',
         server: router({'GET /api/forums': (_) => json({'message': 'Request failed.  API Key not found.'}, 401)}),
       );
-      expect(find.text('The API key was not accepted. Check it under Settings.'), findsOneWidget);
+      expect(find.text('The API key was not accepted.'), findsOneWidget);
       expect(find.text('Try again'), findsOneWidget);
     });
 

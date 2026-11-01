@@ -20,7 +20,7 @@ String describeError(Object e) {
   if (e is! ApiException) return 'Something went wrong. Please try again.';
   switch (e.statusCode) {
     case 401:
-      if (e.keyRejected) return 'The API key was not accepted. Check it under Settings.';
+      if (e.keyRejected) return 'The API key was not accepted.';
       if (e.sessionEnded) return 'Your session has ended. Please log in again.';
       return e.message;
     case 404:
