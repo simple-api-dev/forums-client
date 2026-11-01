@@ -3,18 +3,15 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../forums_api.dart';
 import '../models.dart';
-import '../open_url.dart';
-import 'settings_screen.dart';
 import 'ui.dart';
 
 /// One topic with its comment tree. Replies are indented under their parent.
 /// Vote, edit, delete and report buttons call the API and reload the topic.
 class TopicScreen extends StatefulWidget {
-  const TopicScreen({super.key, required this.state, required this.topicSlug, required this.openUrl});
+  const TopicScreen({super.key, required this.state, required this.topicSlug});
 
   final AppState state;
   final String topicSlug;
-  final UrlOpener openUrl;
 
   @override
   State<TopicScreen> createState() => _TopicScreenState();
@@ -140,13 +137,7 @@ class _TopicScreenState extends State<TopicScreen> {
       builder: (context, _) => Scaffold(
         appBar: AppBar(
           title: const Text('Topic'),
-          actions: accountActions(
-            context,
-            state,
-            onSettings: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => SettingsScreen(state: state, openUrl: widget.openUrl),
-            )),
-          ),
+          actions: accountActions(context, state),
         ),
         body: Centered(
           child: FutureBuilder<Topic>(

@@ -5,26 +5,20 @@ import 'open_url.dart';
 import 'screens/forums_screen.dart';
 
 class ForumsApp extends StatelessWidget {
-  const ForumsApp({super.key, required this.state, required this.openUrl});
+  const ForumsApp({super.key, required this.state, required this.openHome});
 
   final AppState state;
-  final UrlOpener openUrl;
+
+  /// Opens the SimpleAPI home page in this tab (the back arrow on the Forums screen).
+  final UrlOpener openHome;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SimpleAPI Forums sample',
+      title: 'SimpleAPI Forums',
       theme: ThemeData(colorSchemeSeed: const Color(0xFF0066CC), useMaterial3: true),
-      // The app opens straight on content. A new keyVersion rebuilds the list
-      // so it reloads when the key changes.
-      home: ListenableBuilder(
-        listenable: state,
-        builder: (context, _) => ForumsScreen(
-          key: ValueKey(state.keyVersion),
-          state: state,
-          openUrl: openUrl,
-        ),
-      ),
+      // The app opens straight on content.
+      home: ForumsScreen(state: state, openHome: openHome),
     );
   }
 }
