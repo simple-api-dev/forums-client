@@ -8,7 +8,7 @@ A small Flutter web app that shows how to call the free [SimpleAPI Forums API](h
 
 ## Run it
 
-You need the [Flutter SDK](https://docs.flutter.dev/get-started/install) (stable; CI uses 3.47.8).
+You need the [Flutter SDK](https://docs.flutter.dev/get-started/install) (stable; CI uses 3.47.8) and a free key from [keys.simpleapi.dev](https://keys.simpleapi.dev/?product=forums).
 
 ```bash
 git clone https://github.com/simple-api-dev/forums-client
@@ -17,12 +17,7 @@ flutter pub get
 flutter run -d chrome --dart-define=SIMPLEAPI_KEY=YOUR_KEY
 ```
 
-The checks the workflow runs. All HTTP is mocked, so nothing calls the real API:
-
-```bash
-flutter analyze
-flutter test
-```
+Run the tests with `flutter test`. All HTTP is mocked, so nothing calls the real API.
 
 ## How it calls the API
 
@@ -52,15 +47,13 @@ Not in this sample: moderator tools, rules, tags, search, and the admin flows. S
 
 ## Use your own key
 
-The live demo has a shared demo key built in, and a shared demo account (`demo@simpleapi.dev`, password `try-the-demo`, public by design) behind the **Try the demo account** button. Demo data resets every night, so do not use a real password or private details. When the demo is full, register answers "The demo is full. It resets every night."
-
-To use your own key, run the app with it:
+The live demo is built with a shared demo key. The app has no screen for entering a key: it uses only the key compiled in at build time. To run it with your own, pass it to Flutter:
 
 ```bash
 flutter run -d chrome --dart-define=SIMPLEAPI_KEY=YOUR_KEY
 ```
 
-Get a free key at https://keys.simpleapi.dev/?product=forums. A free key holds 25 users and 7 forums, 300 topics and 2000 comments.
+Get a free key at [keys.simpleapi.dev](https://keys.simpleapi.dev/?product=forums).
 
 ## Good to know
 
@@ -73,6 +66,8 @@ Get a free key at https://keys.simpleapi.dev/?product=forums. A free key holds 2
 - A login lasts 30 days. A user can have 20 sessions, and logging in again does not end the others.
 - Errors are `{"message": "..."}`: wrong login `401`, not allowed or a free tier limit `403`, duplicate `409`, malformed JSON `400`, validation `422`, rate limit `429`, a service the API needs is down `503`. The limit is 60 requests a minute per IP address.
 - Registering the email your key belongs to answers `202` and emails a code. The sample shows the message but does not implement that confirm step, so use another address.
+- The demo account is `demo@simpleapi.dev` with password `try-the-demo`. It is public by design and shared by every visitor, and the live demo resets every night, so do not use a real password or any private details. When the demo key has no room for more users, registering shows "The demo is full. It resets every night."
+- A free key holds 25 users, 7 forums, 300 topics and 2000 comments.
 
 ## Project layout
 
@@ -88,7 +83,7 @@ test/                     unit tests for the client, widget tests for the app
 
 ## Deploy to GitHub Pages
 
-[`.github/workflows/pages.yml`](.github/workflows/pages.yml) runs on every push to `main`. It installs Flutter, runs `flutter analyze` and `flutter test`, builds with `flutter build web --release --base-href /forums-client/`, and publishes with the official Pages actions.
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) runs on every push to `main`. It runs `flutter analyze` and `flutter test`, builds with `flutter build web --release --base-href /forums-client/`, and publishes with the official Pages actions.
 
 In your own copy:
 
