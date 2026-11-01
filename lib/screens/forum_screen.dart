@@ -2,18 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../models.dart';
-import '../open_url.dart';
-import 'settings_screen.dart';
 import 'topic_screen.dart';
 import 'ui.dart';
 
 /// The topics of one forum, with a form to start a new one.
 class ForumScreen extends StatefulWidget {
-  const ForumScreen({super.key, required this.state, required this.forum, required this.openUrl});
+  const ForumScreen({super.key, required this.state, required this.forum});
 
   final AppState state;
   final Forum forum;
-  final UrlOpener openUrl;
 
   @override
   State<ForumScreen> createState() => _ForumScreenState();
@@ -73,13 +70,7 @@ class _ForumScreenState extends State<ForumScreen> {
           actions: [
             if (state.isMine(widget.forum.authorId))
               IconButton(tooltip: 'Delete forum', onPressed: _deleteForum, icon: const Icon(Icons.delete_outline)),
-            ...accountActions(
-              context,
-              state,
-              onSettings: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => SettingsScreen(state: state, openUrl: widget.openUrl),
-              )),
-            ),
+            ...accountActions(context, state),
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
@@ -122,7 +113,7 @@ class _ForumScreenState extends State<ForumScreen> {
                         trailing: Text('${t.score} points'),
                         onTap: () async {
                           await Navigator.of(context).push<void>(MaterialPageRoute(
-                            builder: (_) => TopicScreen(state: state, topicSlug: t.slug, openUrl: widget.openUrl),
+                            builder: (_) => TopicScreen(state: state, topicSlug: t.slug),
                           ));
                           if (mounted) setState(_load); // score or text may have changed
                         },

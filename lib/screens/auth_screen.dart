@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../forums_api.dart';
+import '../models.dart';
 import 'ui.dart';
 
 /// Log in or register. Users belong to your key, so you can
@@ -32,17 +33,27 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit() => _signIn(() {
+        final api = widget.state.api;
+        // POST /api/users/register  or  POST /api/users/login
+        return _register
+            ? api.register(name: _name.text.trim(), email: _email.text.trim(), password: _password.text)
+            : api.login(email: _email.text.trim(), password: _password.text);
+      }, registering: _register);
+
+  /// One click: logs in as the shared demo user (POST /api/users/login).
+  Future<void> _tryDemo() => _signIn(
+        () => widget.state.api.login(email: demoEmail, password: demoPassword),
+        registering: false,
+      );
+
+  Future<void> _signIn(Future<AuthResult> Function() call, {required bool registering}) async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final api = widget.state.api;
-      // POST /api/users/register  or  POST /api/users/login
-      final result = _register
-          ? await api.register(name: _name.text.trim(), email: _email.text.trim(), password: _password.text)
-          : await api.login(email: _email.text.trim(), password: _password.text);
+      final result = await call();
       if (result.token == null) {
         if (mounted) setState(() => _error = result.message);
         return;
@@ -51,8 +62,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (e) {
       // A full demo key answers 403 on register; every other message comes from describeError.
-      final demoFull = _register && e.statusCode == 403 && !widget.state.usingOwnKey;
-      if (mounted) setState(() => _error = demoFull ? demoFullMessage : describeError(e));
+      if (mounted) setState(() => _error = registering && e.statusCode == 403 ? demoFullMessage : describeError(e));
     } catch (e) {
       if (mounted) setState(() => _error = describeError(e));
     } finally {
@@ -66,6 +76,13 @@ class _AuthScreenState extends State<AuthScreen> {
       appBar: AppBar(title: Text(_register ? 'Register' : 'Log in')),
       body: Centered(
         child: ListView(padding: const EdgeInsets.all(24), children: [
+          FilledButton.icon(
+            onPressed: _busy ? null : _tryDemo,
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('Try the demo account'),
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 32),
           if (_register) ...[
             TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder())),
             const SizedBox(height: 12),
@@ -86,8 +103,7 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
             onSubmitted: (_) => _submit(),
           ),
-          if (!widget.state.usingOwnKey)
-            const Padding(padding: EdgeInsets.only(top: 12), child: Text(demoNotice)),
+          const Padding(padding: EdgeInsets.only(top: 12), child: Text(demoNotice)),
           if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
           const SizedBox(height: 16),
           Row(children: [

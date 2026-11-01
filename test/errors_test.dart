@@ -14,7 +14,7 @@ void main() {
     test('401 for the key', () {
       expect(
         describeError(ApiException(401, 'Unauthorized. Please provide a valid apikey. Get a free key at https://keys.simpleapi.dev/?product=forums')),
-        'The API key was not accepted. Check it under Settings.',
+        'The API key was not accepted.',
       );
     });
 

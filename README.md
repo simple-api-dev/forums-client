@@ -17,8 +17,6 @@ flutter pub get
 flutter run -d chrome --dart-define=SIMPLEAPI_KEY=YOUR_KEY
 ```
 
-Leave `--dart-define` out and paste your key under Settings instead. Get a free key at https://keys.simpleapi.dev/?product=forums.
-
 The checks the workflow runs. All HTTP is mocked, so nothing calls the real API:
 
 ```bash
@@ -43,21 +41,24 @@ Reading needs only the key. Writing (forums, topics, comments, votes, reports) a
 
 | Screen | What it does | Calls |
 | --- | --- | --- |
-| **Forums** (`forums_screen.dart`) | The landing screen. Lists the forums of the key, or an empty state. **New forum** asks you to log in first. | `GET /api/forums`, `POST /api/forums` |
-| **Settings** (`settings_screen.dart`) | Use your own key instead of the shared demo key, or remove it again. | `GET /api/forums` (used to check the key) |
-| **Log in / Register** (`auth_screen.dart`) | Get a token. Opened when you try to write or vote. **Log out** is in the app bar. | `POST /api/users/register`, `POST /api/users/login`, `POST /api/users/logout` |
+| **Forums** (`forums_screen.dart`) | The landing screen. The back arrow returns to simpleapi.dev. Lists the forums of the key, or an empty state. **New forum** asks you to log in first. | `GET /api/forums`, `POST /api/forums` |
+| **Log in / Register** (`auth_screen.dart`) | Get a token. Opened when you try to write or vote. **Try the demo account** logs in as the shared demo user in one click. **Log out** is in the app bar. | `POST /api/users/register`, `POST /api/users/login`, `POST /api/users/logout` |
 | **Forum** (`forum_screen.dart`) | The topics of one forum, start a topic, and delete the forum if you made it. | `GET /api/forums/{slug}/topics`, `POST /api/forums/{id}/topics`, `DELETE /api/forums/{id}` |
 | **Topic** (`topic_screen.dart`) | A topic with its whole comment tree, with replies indented. Comment, reply, vote, edit and delete your own, and report anything. | `GET /api/topics/{slug}`, `POST /api/comments/type/topic/{id}`, `POST /api/comments/type/comment/{id}`, `PUT /api/topics/{id}`, `PUT /api/comments/{id}`, `DELETE /api/topics/{id}`, `DELETE /api/comments/{id}`, `POST /api/votes/up/{type}/{id}`, `POST /api/votes/down/{type}/{id}`, `DELETE /api/votes/{type}/{id}`, `POST /api/reports/type/{type}/{id}` |
 
 Not in this sample: moderator tools, rules, tags, search, and the admin flows. See the [full docs](https://forums.simpleapi.dev/docs).
 
-## Keys
+## Use your own key
 
-The live demo opens straight on the forum list because a shared demo key is built into it. Demo accounts are shared and public, so do not use a real password.
+The live demo has a shared demo key built in, and a shared demo account (`demo@simpleapi.dev`, password `try-the-demo`, public by design) behind the **Try the demo account** button. Demo data resets every night, so do not use a real password or private details. When the demo is full, register answers "The demo is full. It resets every night."
 
-To use your own key, open **Settings**, paste it and save. It is checked with one call, kept only in your browser (localStorage) and sent only to `forums.simpleapi.dev`. **Remove my key** goes back to the demo key.
+To use your own key, run the app with it:
 
-A free key holds 25 users and 7 forums, 300 topics and 2000 comments. When the shared demo key is full, register answers with a message that says so.
+```bash
+flutter run -d chrome --dart-define=SIMPLEAPI_KEY=YOUR_KEY
+```
+
+Get a free key at https://keys.simpleapi.dev/?product=forums. A free key holds 25 users and 7 forums, 300 topics and 2000 comments.
 
 ## Good to know
 
@@ -74,10 +75,9 @@ A free key holds 25 users and 7 forums, 300 topics and 2000 comments. When the s
 ```
 lib/forums_api.dart       the whole API client
 lib/models.dart           response classes
-lib/app_state.dart        saved key and logged-in user (a ChangeNotifier)
-lib/key_store*.dart       localStorage wrapper, plus an in-memory one for tests
-lib/open_url*.dart        opens a link in a new tab
-lib/config.dart           the build-time key (SIMPLEAPI_KEY)
+lib/app_state.dart        the API client and logged-in user (a ChangeNotifier)
+lib/open_url*.dart        opens a link in the same tab (the back arrow)
+lib/config.dart           the build-time key (SIMPLEAPI_KEY) and the home page link
 lib/screens/              the screens, and ui.dart with the shared widgets and error wording
 test/                     unit tests for the client, widget tests for the app
 ```
@@ -89,7 +89,7 @@ test/                     unit tests for the client, widget tests for the app
 In your own copy:
 
 1. Set **Settings, Pages, Source** to **GitHub Actions**.
-2. Add a repository **variable** named `SIMPLEAPI_KEY` under **Settings, Secrets and variables, Actions, Variables**. The build passes it with `--dart-define=SIMPLEAPI_KEY=...`. If it is empty, the app shows "This demo has no key configured".
+2. Add a repository **variable** named `SIMPLEAPI_KEY` under **Settings, Secrets and variables, Actions, Variables**. The build passes it with `--dart-define=SIMPLEAPI_KEY=...`.
 3. Push to `main`, or run the workflow.
 
 Anything passed with `--dart-define` ends up in the compiled JavaScript, so anyone can read it from the deployed site. Use a free key made for a public demo. If you rename the repository, change `--base-href` to match.

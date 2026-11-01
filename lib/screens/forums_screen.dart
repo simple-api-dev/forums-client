@@ -5,16 +5,16 @@ import '../config.dart';
 import '../models.dart';
 import '../open_url.dart';
 import 'forum_screen.dart';
-import 'settings_screen.dart';
 import 'ui.dart';
 
 /// Home: the forums of this key. A new key has none, so the empty state
 /// invites you to create the first one (this needs a logged-in user).
 class ForumsScreen extends StatefulWidget {
-  const ForumsScreen({super.key, required this.state, required this.openUrl});
+  const ForumsScreen({super.key, required this.state, required this.openHome});
 
   final AppState state;
-  final UrlOpener openUrl;
+  /// Opens the SimpleAPI home page in this tab.
+  final UrlOpener openHome;
 
   @override
   State<ForumsScreen> createState() => _ForumsScreenState();
@@ -33,7 +33,7 @@ class _ForumsScreenState extends State<ForumsScreen> {
 
   void _load() {
     // GET /api/forums
-    _forums = state.hasKey ? state.api.listForums() : null;
+    _forums = state.api.listForums();
   }
 
   Future<void> _createForum() async {
@@ -54,48 +54,31 @@ class _ForumsScreenState extends State<ForumsScreen> {
     }
   }
 
-  void _openSettings() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => SettingsScreen(state: state, openUrl: widget.openUrl),
-    ));
-  }
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: state,
       builder: (context, _) => Scaffold(
         appBar: AppBar(
-          title: const Text('Forums'),
-          actions: accountActions(context, state, onSettings: _openSettings),
+          leading: IconButton(
+            tooltip: 'Back to SimpleAPI',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => widget.openHome(homeUrl),
+          ),
+          title: const Text('SimpleAPI Forums'),
+          actions: accountActions(context, state),
         ),
-        floatingActionButton: state.hasKey
-            ? FloatingActionButton.extended(
-                onPressed: _createForum,
-                icon: const Icon(Icons.add),
-                label: const Text('New forum'),
-              )
-            : null,
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _createForum,
+          icon: const Icon(Icons.add),
+          label: const Text('New forum'),
+        ),
         body: Centered(child: _body()),
       ),
     );
   }
 
   Widget _body() {
-    if (!state.hasKey) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Text('This demo has no key configured', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            const Text('Get a free key, then paste it under Settings.', textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: () => widget.openUrl(getKeyUrl), child: const Text('Get a free key')),
-          ]),
-        ),
-      );
-    }
     return FutureBuilder<List<Forum>>(
       future: _forums,
       builder: (context, snap) {
@@ -135,7 +118,7 @@ class _ForumsScreenState extends State<ForumsScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
                     await Navigator.of(context).push<void>(MaterialPageRoute(
-                      builder: (_) => ForumScreen(state: state, forum: f, openUrl: widget.openUrl),
+                      builder: (_) => ForumScreen(state: state, forum: f),
                     ));
                     if (mounted) setState(_load); // the forum may have been deleted
                   },

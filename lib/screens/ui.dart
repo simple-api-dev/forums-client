@@ -4,11 +4,15 @@ import '../app_state.dart';
 import '../forums_api.dart';
 import 'auth_screen.dart';
 
-/// Shown under the register form while the app uses the shared demo key.
-const demoNotice = 'Demo accounts are shared and public. Do not use a real password or any private details.';
+/// Shown on the login and register forms.
+const demoNotice = 'This is a shared demo. Data resets every night. Do not use a real password or any private details.';
 
-/// Shown instead of the API's message when the shared demo key has no room for another user.
-const demoFullMessage = 'The demo is full: its key cannot take more accounts. Use your own free key under Settings to keep going.';
+/// Shown instead of the API's message when the demo key has no room for another user.
+const demoFullMessage = 'The demo is full. It resets every night.';
+
+/// The shared demo user. Public by design: these are not secrets, anyone may log in with them.
+const demoEmail = 'demo@simpleapi.dev';
+const demoPassword = 'try-the-demo';
 
 /// Turns any error into a sentence the user can read. For a 401 on login, 403,
 /// 409 and 422 the API's own message is the best explanation, so it is shown as is.
@@ -16,7 +20,7 @@ String describeError(Object e) {
   if (e is! ApiException) return 'Something went wrong. Please try again.';
   switch (e.statusCode) {
     case 401:
-      if (e.keyRejected) return 'The API key was not accepted. Check it under Settings.';
+      if (e.keyRejected) return 'The API key was not accepted.';
       if (e.sessionEnded) return 'Your session has ended. Please log in again.';
       return e.message;
     case 404:
@@ -123,15 +127,17 @@ class Centered extends StatelessWidget {
       Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 720), child: child));
 }
 
-/// Log in / log out / settings buttons shared by every screen's app bar.
-List<Widget> accountActions(BuildContext context, AppState state, {required VoidCallback onSettings}) {
+/// The one log in / log out button of every screen's app bar. Kept short so the title fits at 360px;
+/// the logged-in name is in the tooltip.
+List<Widget> accountActions(BuildContext context, AppState state) {
   return [
-    if (state.loggedIn) ...[
-      Center(child: Text('Hi, ${state.userName ?? 'you'}')),
-      TextButton(onPressed: state.logout, child: const Text('Log out')),
-    ] else
-      TextButton(onPressed: () => ensureLoggedIn(context, state), child: const Text('Log in / Register')),
-    TextButton(onPressed: onSettings, child: const Text('Settings')),
+    if (state.loggedIn)
+      Tooltip(
+        message: 'Logged in as ${state.userName ?? 'you'}',
+        child: TextButton(onPressed: state.logout, child: const Text('Log out')),
+      )
+    else
+      TextButton(onPressed: () => ensureLoggedIn(context, state), child: const Text('Log in')),
     const SizedBox(width: 8),
   ];
 }

@@ -6,5 +6,5 @@
 /// passed this way ends up in the compiled JavaScript, so use a free demo key.
 const configuredKey = String.fromEnvironment('SIMPLEAPI_KEY');
 
-/// Where developers get their own free key for this API.
-const getKeyUrl = 'https://keys.simpleapi.dev/?product=forums';
+/// The SimpleAPI home page, where the back arrow in the app bar goes.
+const homeUrl = 'https://simpleapi.dev';
