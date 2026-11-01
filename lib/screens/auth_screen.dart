@@ -75,14 +75,12 @@ class _AuthScreenState extends State<AuthScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(_register ? 'Register' : 'Log in')),
       body: Centered(
+        maxWidth: 560,
         child: ListView(padding: const EdgeInsets.all(24), children: [
-          FilledButton.icon(
-            onPressed: _busy ? null : _tryDemo,
-            icon: const Icon(Icons.play_arrow),
-            label: const Text('Try the demo account'),
-          ),
-          const SizedBox(height: 8),
+          FilledButton(onPressed: _busy ? null : _tryDemo, child: const Text('Try the demo account')),
           const Divider(height: 32),
+          const DemoNotice(),
+          const SizedBox(height: 16),
           if (_register) ...[
             TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder())),
             const SizedBox(height: 12),
@@ -103,12 +101,10 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
             onSubmitted: (_) => _submit(),
           ),
-          const Padding(padding: EdgeInsets.only(top: 12), child: Text(demoNotice)),
           if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
           const SizedBox(height: 16),
-          Row(children: [
+          Wrap(spacing: 12, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
             FilledButton(onPressed: _busy ? null : _submit, child: Text(_register ? 'Register' : 'Log in')),
-            const SizedBox(width: 12),
             TextButton(
               onPressed: () => setState(() => _register = !_register),
               child: Text(_register ? 'I already have an account' : 'Create an account'),

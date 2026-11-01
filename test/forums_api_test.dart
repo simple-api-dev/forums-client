@@ -60,6 +60,7 @@ const topicJson = {
   'type': 'Post',
   'status': 'Active',
   'user_id': 8,
+  'author': 'Probe User',
   'updated_at': '2026-10-31T20:41:56Z',
   'tag_names': [],
   'reports': [],
@@ -77,6 +78,7 @@ final topicWithTree = {
       'body': 'top comment',
       'status': 'Active',
       'user_id': 8,
+      'author': 'Probe User',
       'locked_at': null,
       'updated_at': '2026-10-31T20:42:11Z',
       'reports': [],
@@ -89,9 +91,10 @@ final topicWithTree = {
           'body': 'reply',
           'status': 'Active',
           'user_id': 9,
+          'author': 'Ann',
           'score': 2,
           'comments': [
-            {'id': 322, 'commentable_id': 321, 'body': 'reply to the reply', 'status': 'Active', 'user_id': 8, 'score': 0, 'comments': []},
+            {'id': 322, 'commentable_id': 321, 'body': 'reply to the reply', 'status': 'Active', 'user_id': 8, 'author': null, 'score': 0, 'comments': []},
           ],
         },
       ],
@@ -166,6 +169,18 @@ void main() {
     expect(c.replies.single.body, 'reply');
     expect(c.replies.single.score, 2);
     expect(c.replies.single.replies.single.body, 'reply to the reply');
+  });
+
+  test('author is a name on topics and comments, and null when there is none', () async {
+    final (api, _) = apiWith((_) => json(topicWithTree));
+    final t = await api.getTopic('hello_topic');
+    expect(t.author, 'Probe User');
+    expect(t.userId, 8);
+    expect(t.comments.single.replies.single.author, 'Ann');
+    expect(t.comments.single.replies.single.replies.single.author, isNull);
+
+    final (blank, _) = apiWith((_) => json({...topicJson, 'author': ' '}));
+    expect((await blank.getTopic('hello_topic')).author, isNull);
   });
 
   test('slugs are url-encoded into the path (the API url-decodes it), never twice', () async {

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forums_client/app.dart';
 import 'package:forums_client/app_state.dart';
-import 'package:forums_client/screens/ui.dart' show demoEmail, demoFullMessage, demoNotice, demoPassword;
+import 'package:forums_client/screens/ui.dart' show demoEmail, demoFullMessage, demoNoticeText, demoPassword;
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -51,6 +51,31 @@ Server router(Map<String, Server> routes) => (r) {
       final handler = routes['${r.method} ${r.url.path}'];
       return handler != null ? handler(r) : json({'message': 'Not a valid api route - not found.'}, 404);
     };
+
+/// The login screen every SimpleAPI demo shares: same order, same widths, and no overflow at 360px.
+Future<void> expectSharedLoginLayout(WidgetTester tester) async {
+  final demo = find.widgetWithText(FilledButton, 'Try the demo account');
+  final logIn = find.widgetWithText(FilledButton, 'Log in');
+  final order = [
+    demo,
+    find.byType(Divider),
+    find.text(demoNoticeText),
+    find.widgetWithText(TextField, 'Email'),
+    find.widgetWithText(TextField, 'Password'),
+    logIn,
+  ];
+  final tops = [for (final item in order) tester.getTopLeft(item).dy];
+  expect(tops, [...tops]..sort());
+  expect(tester.getTopLeft(find.widgetWithText(TextButton, 'Create an account')).dy, greaterThanOrEqualTo(tops.last));
+
+  expect(tester.getSize(demo).width, 512); // 560 wide with 24 of padding
+  expect(tester.getSize(find.widgetWithText(TextField, 'Email')).width, 512);
+  expect(tester.getSize(logIn).width, lessThan(512));
+
+  tester.view.physicalSize = const Size(360, 800);
+  await tester.pump();
+  expect(tester.getSize(demo).width, 312);
+}
 
 void main() {
   group('landing', () {
@@ -189,7 +214,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Create an account'));
       await tester.pumpAndSettle();
-      expect(find.text(demoNotice), findsOneWidget);
+      expect(find.text(demoNoticeText), findsOneWidget);
       expect(find.text('At least 8 characters'), findsOneWidget);
 
       final fields = find.byType(TextField);
@@ -206,10 +231,17 @@ void main() {
       await pumpApp(tester, server: router({'GET /api/forums': (_) => page([])}));
       await tester.tap(find.widgetWithText(TextButton, 'Log in'));
       await tester.pumpAndSettle();
-      expect(find.text(demoNotice), findsOneWidget);
-      expect(demoNotice, 'This is a shared demo. Data resets every night. Do not use a real password or any private details.');
+      expect(find.text(demoNoticeText), findsOneWidget);
+      expect(demoNoticeText, 'This is a shared demo. Data resets every night. Do not use a real password or any private details.');
       expect(find.text('Settings'), findsNothing);
       expect(find.textContaining('key'), findsNothing);
+    });
+
+    testWidgets('the login form follows the shared login layout', (tester) async {
+      await pumpApp(tester, server: router({'GET /api/forums': (_) => page([])}));
+      await tester.tap(find.widgetWithText(TextButton, 'Log in'));
+      await tester.pumpAndSettle();
+      await expectSharedLoginLayout(tester);
     });
 
     testWidgets('"Try the demo account" logs in as the shared demo user in one click', (tester) async {
@@ -242,7 +274,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Create an account'));
       await tester.pumpAndSettle();
-      expect(find.text(demoNotice), findsOneWidget);
+      expect(find.text(demoNoticeText), findsOneWidget);
       expect(find.text('Try the demo account'), findsOneWidget);
     });
 
@@ -437,6 +469,28 @@ void main() {
       expect(find.text('top comment'), findsOneWidget);
       expect(find.text('reply'), findsOneWidget);
       expect(find.text('reply to the reply'), findsOneWidget);
+    });
+
+    testWidgets('shows author names, and Unknown when there is none, never an id', (tester) async {
+      await openTopic(tester);
+      expect(find.text('by Probe User'), findsNWidgets(2)); // the topic and its first comment
+      expect(find.text('by Ann'), findsOneWidget);
+      expect(find.text('by Unknown'), findsOneWidget);
+      expect(find.textContaining(RegExp(r'user \d')), findsNothing);
+    });
+
+    testWidgets('a topic with no author says by Unknown', (tester) async {
+      await openTopic(tester, extra: {
+        'GET /api/topics/hello_topic': (_) => json({...topicJson, 'author': null, 'comments': []}),
+      });
+      expect(find.text('by Unknown'), findsOneWidget);
+    });
+
+    testWidgets('your own content is found by id, whatever the name says', (tester) async {
+      await openTopic(tester, loggedInAs: 8, extra: {
+        'GET /api/topics/hello_topic': (_) => json({...topicJson, 'author': null, 'comments': []}),
+      });
+      expect(find.text('Edit'), findsOneWidget);
     });
 
     testWidgets('replies are indented under their parent', (tester) async {

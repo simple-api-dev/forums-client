@@ -151,7 +151,7 @@ class _TopicScreenState extends State<TopicScreen> {
               return ListView(padding: const EdgeInsets.all(16), children: [
                 Text(t.title, style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 4),
-                Text('by user ${t.userId}', style: Theme.of(context).textTheme.bodySmall),
+                Text(byAuthor(t.author), style: Theme.of(context).textTheme.bodySmall),
                 if (t.body.isNotEmpty) ...[const SizedBox(height: 12), Text(t.body)],
                 _Actions(
                   score: t.score,
@@ -247,7 +247,7 @@ class _CommentTile extends StatelessWidget {
         decoration: BoxDecoration(border: Border(left: BorderSide(color: Theme.of(context).colorScheme.outlineVariant, width: 2))),
         padding: const EdgeInsets.only(left: 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('user ${c.userId}', style: Theme.of(context).textTheme.bodySmall),
+          Text(byAuthor(c.author), style: Theme.of(context).textTheme.bodySmall),
           Text(c.body),
           _Actions(
             score: c.score,
